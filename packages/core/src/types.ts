@@ -109,3 +109,34 @@ export interface WorkoutSessionDetail extends WorkoutSessionSummary {
   notes: string | null
   sets: LoggedWorkoutSet[]
 }
+
+export interface BodyWeightEntry {
+  id: string
+  /** Local calendar date, YYYY-MM-DD */
+  measuredOn: string
+  weightKg: number
+  note: string | null
+}
+
+/** Aggregates for one exercise within one workout session. */
+export interface ExerciseSessionStat {
+  exerciseId: string
+  sessionId: string
+  startedAt: string
+  setCount: number
+  maxReps: number
+  maxWeightKg: number | null
+  /** Best Epley estimated one-rep max across sets of 1-12 reps */
+  bestE1rmKg: number | null
+  volumeKg: number
+  totalReps: number
+}
+
+/** What the user did previously for an exercise, used during a workout. */
+export interface ExerciseHistory {
+  lastSets: PlannedSet[]
+  lastPerformedAt: string | null
+  bestE1rmKg: number | null
+  maxWeightKg: number | null
+  maxReps: number | null
+}

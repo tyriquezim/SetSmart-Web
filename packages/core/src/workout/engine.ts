@@ -10,7 +10,8 @@
  *   and the rest timer survives tab switches/reloads: it stores an absolute
  *   `endsAt`, not a countdown.
  */
-import type { PlannedSet, Routine } from '../types'
+import { estimateOneRepMax } from '../progress/stats'
+import type { ExerciseHistory, PlannedSet, Routine } from '../types'
 
 export interface LoggedSet {
   reps: number
@@ -29,6 +30,8 @@ export interface WorkoutExercise {
   sets: PlannedSet[]
   logged: LoggedSet[]
   status: ExerciseStatus
+  /** Previous performance, if known when the workout started. */
+  history?: ExerciseHistory
 }
 
 export type WorkoutPhase =
@@ -65,7 +68,7 @@ export interface CreateWorkoutInput {
   id: string
   routineId: string | null
   name: string
-  exercises: Array<{ exerciseId: string; name: string; restSeconds: number; sets: PlannedSet[] }>
+  exercises: Array<{ exerciseId: string; name: string; restSeconds: number; sets: PlannedSet[]; history?: ExerciseHistory }>
   now: number
 }
 
@@ -87,7 +90,12 @@ export function createWorkout(input: CreateWorkoutInput): WorkoutState {
   }
 }
 
-export function createWorkoutFromRoutine(routine: Routine, id: string, now: number): WorkoutState {
+export function createWorkoutFromRoutine(
+  routine: Routine,
+  id: string,
+  now: number,
+  history: Record<string, ExerciseHistory> = {},
+): WorkoutState {
   return createWorkout({
     id,
     routineId: routine.id,
@@ -98,6 +106,7 @@ export function createWorkoutFromRoutine(routine: Routine, id: string, now: numb
       name: re.exercise.name,
       restSeconds: re.restSeconds,
       sets: re.sets,
+      history: history[re.exerciseId],
     })),
   })
 }
@@ -220,6 +229,8 @@ export interface CurrentSetInfo {
   target: PlannedSet
   /** Most recent logged set for this exercise, useful for prefilling inputs. */
   previous: LoggedSet | null
+  /** The same set number from the last session this exercise was done (or its last set). */
+  lastTime: PlannedSet | null
 }
 
 /** The set that will be performed next (current set, or the one after rest). */
@@ -235,7 +246,45 @@ export function currentSet(state: WorkoutState): CurrentSetInfo | null {
     totalSets: exercise.sets.length,
     target: exercise.sets[i],
     previous: exercise.logged[exercise.logged.length - 1] ?? null,
+    lastTime: lastTimeFor(exercise, exercise.logged.length),
   }
+}
+
+function lastTimeFor(exercise: WorkoutExercise, setIndex: number): PlannedSet | null {
+  const last = exercise.history?.lastSets
+  if (!last || last.length === 0) return null
+  return last[Math.min(setIndex, last.length - 1)]
+}
+
+/** Stored weights are rounded (numeric(7,3)); ignore differences smaller than this. */
+const PR_TOLERANCE_KG = 0.01
+
+export interface ExercisePRs {
+  exerciseIndex: number
+  /** New best estimated 1RM vs. all previous sessions */
+  e1rm: boolean
+  /** New heaviest weight lifted */
+  weight: boolean
+}
+
+/**
+ * Personal records set in this workout. Only exercises with previous history
+ * count (a first attempt isn't a record yet).
+ */
+export function workoutPRs(state: WorkoutState): ExercisePRs[] {
+  return state.exercises.flatMap((ex, exerciseIndex) => {
+    const h = ex.history
+    if (!h || ex.logged.length === 0) return []
+    let bestE1rm = 0
+    let maxWeight = 0
+    for (const s of ex.logged) {
+      bestE1rm = Math.max(bestE1rm, estimateOneRepMax(s.weightKg, s.reps) ?? 0)
+      if (s.reps > 0) maxWeight = Math.max(maxWeight, s.weightKg ?? 0)
+    }
+    const e1rm = h.bestE1rmKg != null && bestE1rm > h.bestE1rmKg + PR_TOLERANCE_KG
+    const weight = h.maxWeightKg != null && maxWeight > h.maxWeightKg + PR_TOLERANCE_KG
+    return e1rm || weight ? [{ exerciseIndex, e1rm, weight }] : []
+  })
 }
 
 export function canPostpone(state: WorkoutState): boolean {

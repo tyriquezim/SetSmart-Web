@@ -6,6 +6,7 @@ import {
   restRemainingMs,
   toLogPayload,
   workoutReducer,
+  workoutPRs,
   workoutTotals,
   type WorkoutAction,
   type WorkoutState,
@@ -183,5 +184,36 @@ describe('workout engine', () => {
     const s = createWorkout({ id: 'x', routineId: null, name: 'x', now: T0, exercises: [{ exerciseId: 'a', name: 'A', restSeconds: 60, sets: [] }] })
     expect(s.exercises).toEqual([])
     expect(s.phase.kind).toBe('complete')
+  })
+})
+
+describe('history and PRs', () => {
+  const history = { lastSets: [{ reps: 8, weightKg: 57.5 }, { reps: 6, weightKg: 57.5 }], lastPerformedAt: '2026-11-08T08:00:00Z', bestE1rmKg: 72, maxWeightKg: 57.5, maxReps: 8 }
+  const withHistory = () =>
+    createWorkout({
+      id: 'w2', routineId: null, name: 'x', now: T0,
+      exercises: [
+        { exerciseId: 'bench', name: 'Bench', restSeconds: 0, sets: [{ reps: 8, weightKg: 60 }, { reps: 8, weightKg: 60 }, { reps: 8, weightKg: 60 }], history },
+        { exerciseId: 'new', name: 'New thing', restSeconds: 0, sets: [{ reps: 5, weightKg: 100 }] },
+      ],
+    })
+
+  it('exposes last time for the matching set number, clamped to the last set', () => {
+    let s = withHistory()
+    expect(currentSet(s)!.lastTime).toEqual({ reps: 8, weightKg: 57.5 })
+    s = run(s, log(8, 60))
+    expect(currentSet(s)!.lastTime).toEqual({ reps: 6, weightKg: 57.5 })
+    s = run(s, log(8, 60))
+    expect(currentSet(s)!.lastTime).toEqual({ reps: 6, weightKg: 57.5 })
+  })
+
+  it('flags PRs only against previous history', () => {
+    const s = run(withHistory(), log(8, 60), log(8, 60), log(8, 60), log(5, 100))
+    expect(workoutPRs(s)).toEqual([{ exerciseIndex: 0, e1rm: true, weight: true }])
+  })
+
+  it('ignores rounding noise from stored weights', () => {
+    const s = run(withHistory(), log(1, 57.5 + 0.004))
+    expect(workoutPRs(s)).toEqual([])
   })
 })
