@@ -28,3 +28,6 @@ dist-ssr
 .env.*
 !.env.example
 *.tsbuildinfo
+
+# Local copies of docs with real config values
+*.local.md
