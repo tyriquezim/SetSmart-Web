@@ -28,6 +28,16 @@ supabase/        SQL migrations (schema, row-level security, RPCs, exercise libr
    npm run dev        # http://localhost:5173
    ```
 
+## Deploying (Netlify)
+
+The site is at <https://setsmart.netlify.app> and deploys from `main`. Build settings live in `netlify.toml`.
+
+1. In Netlify → *Site configuration → Environment variables*, add `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+   and `VITE_USDA_API_KEY`. They are baked in at build time, so **redeploy** after changing them.
+   Only ever use the anon/publishable key here, never the service-role key.
+2. In Supabase → *Authentication → URL Configuration*, set the Site URL to `https://setsmart.netlify.app`
+   and add both it and `http://localhost:5173` under Redirect URLs.
+
 ## Scripts (from repo root)
 
 | Command             | What it does                              |
