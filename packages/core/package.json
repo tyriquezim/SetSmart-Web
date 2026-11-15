@@ -1,0 +1,22 @@
+{
+  "name": "@gymbro/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Platform-agnostic GymBro logic shared by web and mobile: types, Supabase data access, units, and the workout engine.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@supabase/supabase-js": "^2.0.0"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.119.0",
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.0"
+  }
+}
