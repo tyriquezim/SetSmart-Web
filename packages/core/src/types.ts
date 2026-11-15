@@ -140,3 +140,84 @@ export interface ExerciseHistory {
   maxWeightKg: number | null
   maxReps: number | null
 }
+
+// ---- Nutrition ---------------------------------------------------------------
+
+export type Meal = 'breakfast' | 'lunch' | 'dinner' | 'snack'
+
+export const MEALS: ReadonlyArray<{ value: Meal; label: string }> = [
+  { value: 'breakfast', label: 'Breakfast' },
+  { value: 'lunch', label: 'Lunch' },
+  { value: 'dinner', label: 'Dinner' },
+  { value: 'snack', label: 'Snacks' },
+]
+
+/** Energy in kJ, macros in grams. */
+export interface Nutrients {
+  energyKj: number
+  proteinG: number
+  carbsG: number
+  fatG: number
+}
+
+/** Per-100 g/ml values as printed on a label; macros may be unknown. */
+export interface NutrientsPer100 {
+  energyKj: number
+  proteinG: number | null
+  carbsG: number | null
+  fatG: number | null
+}
+
+export type FoodSource = 'custom' | 'off' | 'usda'
+/** Whether a food is measured by weight or by volume. */
+export type BaseUnit = 'g' | 'ml'
+/** How the user entered an amount: grams/ml directly, or a number of servings. */
+export type AmountUnit = 'g' | 'ml' | 'serving'
+
+/** Everything needed to log a food, whether it came from the database or a search API. */
+export interface FoodData {
+  source: FoodSource
+  /** Barcode for Open Food Facts, fdcId for USDA, null for custom foods */
+  sourceId: string | null
+  name: string
+  brand: string | null
+  barcode: string | null
+  baseUnit: BaseUnit
+  per100: NutrientsPer100
+  /** Size of one serving in base units (g or ml) */
+  servingSize: number | null
+  /** e.g. "2 biscuits" */
+  servingLabel: string | null
+}
+
+/** A food saved in the user's own food list. */
+export interface Food extends FoodData {
+  id: string
+  archivedAt: string | null
+}
+
+export interface FoodLogEntry extends Nutrients {
+  id: string
+  /** Local calendar date, YYYY-MM-DD */
+  eatenOn: string
+  meal: Meal
+  /** null for quick adds (or if the food was deleted) */
+  foodId: string | null
+  name: string
+  brand: string | null
+  amount: number | null
+  amountUnit: AmountUnit | null
+  /** Grams (or ml) eaten; null for quick adds */
+  grams: number | null
+  createdAt: string
+}
+
+export type FoodLogInput = Omit<FoodLogEntry, 'id' | 'createdAt'>
+
+/** Daily targets; null means "no target set". */
+export interface NutritionTargets {
+  energyKj: number | null
+  proteinG: number | null
+  carbsG: number | null
+  fatG: number | null
+}
