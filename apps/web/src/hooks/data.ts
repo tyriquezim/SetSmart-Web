@@ -1,5 +1,25 @@
 import {
+  addFoodLog,
+  addFoodLogs,
   archiveExercise,
+  archiveFood,
+  createFood,
+  deleteFoodLog,
+  ensureFoodSaved,
+  findSavedFoodByBarcode,
+  lookupBarcode,
+  getNutritionTargets,
+  listFoodLogs,
+  listFoods,
+  listRecentFoods,
+  saveNutritionTargets,
+  updateFood,
+  updateFoodLog,
+  type EnergyUnit,
+  type Food,
+  type FoodData,
+  type FoodLogInput,
+  type NutritionTargets,
   deleteBodyWeight,
   listBodyWeights,
   listExerciseSessionStats,
@@ -35,6 +55,12 @@ export const keys = {
   bodyWeights: ['bodyWeights'] as const,
   /** Everything derived from logged sets; invalidate when workouts change. */
   stats: ['stats'] as const,
+  /** Prefix for every food-log query (single days and ranges). */
+  foodLogs: ['foodLogs'] as const,
+  foodLogRange: (from: string, to: string) => ['foodLogs', from, to] as const,
+  foods: ['foods'] as const,
+  recentFoods: ['foods', 'recent'] as const,
+  targets: ['nutritionTargets'] as const,
 }
 
 // ---- Profile ---------------------------------------------------------------
@@ -47,6 +73,11 @@ export function useProfile() {
 /** The user's preferred weight unit (defaults to kg while the profile loads). */
 export function useWeightUnit(): WeightUnit {
   return useProfile().data?.weightUnit ?? 'kg'
+}
+
+/** The user's preferred energy unit (defaults to kJ while the profile loads). */
+export function useEnergyUnit(): EnergyUnit {
+  return useProfile().data?.energyUnit ?? 'kj'
 }
 
 export function useUpdateProfile() {
@@ -170,5 +201,112 @@ export function useDeleteBodyWeight() {
   return useMutation({
     mutationFn: (id: string) => deleteBodyWeight(db, id),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.bodyWeights }),
+  })
+}
+
+// ---- Nutrition ---------------------------------------------------------------
+
+/** Food log entries between two dates inclusive (one day when `to` is omitted). */
+export function useFoodLogs(from: string, to: string = from) {
+  return useQuery({ queryKey: keys.foodLogRange(from, to), queryFn: () => listFoodLogs(db, from, to) })
+}
+
+function useInvalidateFoodLogs() {
+  const qc = useQueryClient()
+  return () => {
+    void qc.invalidateQueries({ queryKey: keys.foodLogs })
+    void qc.invalidateQueries({ queryKey: keys.recentFoods })
+  }
+}
+
+/**
+ * Log a food. Search results are saved to the user's food list first, so
+ * the entry links to a food that shows up in recents.
+ */
+export function useLogFood() {
+  const user = useUser()
+  const invalidate = useInvalidateFoodLogs()
+  return useMutation({
+    mutationFn: async ({ food, entry }: { food: FoodData | Food | null; entry: Omit<FoodLogInput, 'foodId'> }) => {
+      const saved = food ? await ensureFoodSaved(db, user.id, food) : null
+      return addFoodLog(db, user.id, { ...entry, foodId: saved?.id ?? null })
+    },
+    onSuccess: invalidate,
+  })
+}
+
+export function useCopyFoodLogs() {
+  const user = useUser()
+  const invalidate = useInvalidateFoodLogs()
+  return useMutation({ mutationFn: (inputs: FoodLogInput[]) => addFoodLogs(db, user.id, inputs), onSuccess: invalidate })
+}
+
+export function useUpdateFoodLog() {
+  const invalidate = useInvalidateFoodLogs()
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: Partial<FoodLogInput> }) => updateFoodLog(db, id, patch),
+    onSuccess: invalidate,
+  })
+}
+
+export function useDeleteFoodLog() {
+  const invalidate = useInvalidateFoodLogs()
+  return useMutation({ mutationFn: (id: string) => deleteFoodLog(db, id), onSuccess: invalidate })
+}
+
+export function useFoods() {
+  return useQuery({ queryKey: keys.foods, queryFn: () => listFoods(db) })
+}
+
+export function useRecentFoods() {
+  return useQuery({ queryKey: keys.recentFoods, queryFn: () => listRecentFoods(db) })
+}
+
+export function useCreateFood() {
+  const user = useUser()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: FoodData) => createFood(db, user.id, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.foods }),
+  })
+}
+
+export function useUpdateFood() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: FoodData }) => updateFood(db, id, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.foods }),
+  })
+}
+
+export function useArchiveFood() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => archiveFood(db, id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.foods }),
+  })
+}
+
+export function useNutritionTargets() {
+  return useQuery({ queryKey: keys.targets, queryFn: () => getNutritionTargets(db) })
+}
+
+export function useSaveNutritionTargets() {
+  const user = useUser()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (t: NutritionTargets) => saveNutritionTargets(db, user.id, t),
+    onSuccess: (t) => qc.setQueryData(keys.targets, t),
+  })
+}
+
+/**
+ * Find a food by barcode: the user's own foods first (so a custom food with that
+ * barcode wins), then Open Food Facts. Resolves to null when nothing matches.
+ */
+export function useBarcodeLookup() {
+  return useMutation({
+    mutationFn: async (barcode: string): Promise<Food | FoodData | null> =>
+      (await findSavedFoodByBarcode(db, barcode)) ?? (await lookupBarcode(barcode)),
   })
 }

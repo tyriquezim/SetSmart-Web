@@ -15,9 +15,13 @@ supabase/        SQL migrations (schema, row-level security, RPCs, exercise libr
    (Or with the Supabase CLI: `supabase link --project-ref <ref>` then `supabase db push`.)
 3. **Configure the web app**: `cp apps/web/.env.example apps/web/.env.local` and fill in the project URL and
    anon key from *Project Settings → API*.
-4. **Auth URLs**: in *Authentication → URL Configuration*, set the Site URL to `http://localhost:5173` for
+4. **Optional, for food search:** get a free USDA FoodData Central key at
+   <https://fdc.nal.usda.gov/api-key-signup> and set `VITE_USDA_API_KEY` in `apps/web/.env.local`. Without it,
+   generic-food search ("banana", "rice") uses a shared demo key that only allows a few searches per hour.
+   Packaged-food search and barcodes use Open Food Facts, which needs no key.
+5. **Auth URLs**: in *Authentication → URL Configuration*, set the Site URL to `http://localhost:5173` for
    development so confirmation/reset emails link back to the app.
-5. Install and run:
+6. Install and run:
 
    ```sh
    npm install
@@ -45,6 +49,16 @@ supabase/        SQL migrations (schema, row-level security, RPCs, exercise libr
 
 Limitation: on the web, iOS Safari suspends JavaScript when the phone is locked, so the rest alarm sounds
 when you unlock. The native app will use scheduled local notifications to fix this.
+
+## Food logging
+
+- Search covers your own foods, USDA (generic foods) and Open Food Facts (packaged products). A search result
+  is copied into your `foods` the first time you log it, so it shows up under Recent.
+- Each `food_logs` row stores a snapshot of the name and the nutrients eaten, so editing or deleting a food
+  never changes past days. Quick adds have no food and no amount.
+- Barcode scanning uses the browser's `BarcodeDetector` where available, otherwise a bundled ZXing WebAssembly
+  build that loads only when the scanner opens. The camera needs HTTPS (or `localhost`): to scan from your phone
+  against the dev server, expose it over HTTPS (e.g. a tunnel) or type the barcode number instead.
 
 ## Data model
 

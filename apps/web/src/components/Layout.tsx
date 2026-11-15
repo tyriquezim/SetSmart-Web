@@ -1,16 +1,18 @@
 import { currentSet } from '@setsmart/core'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { useActiveWorkout } from '../workout/context'
-import { ChartIcon, DumbbellIcon, HistoryIcon, HomeIcon, PlayIcon, RoutineIcon, SettingsIcon } from './icons'
+import { ChartIcon, DumbbellIcon, FoodIcon, HistoryIcon, HomeIcon, PlayIcon, RoutineIcon, SettingsIcon } from './icons'
 
 // `mobile: false` items live only in the desktop sidebar; the phone tab bar fits five.
+// On phones, Settings is reached from the gear on the Home page instead.
 const NAV = [
   { to: '/', label: 'Home', icon: HomeIcon, end: true, mobile: true },
   { to: '/routines', label: 'Routines', icon: RoutineIcon, mobile: true },
+  { to: '/food', label: 'Food', icon: FoodIcon, mobile: true },
   { to: '/exercises', label: 'Exercises', icon: DumbbellIcon, mobile: false },
   { to: '/progress', label: 'Progress', icon: ChartIcon, mobile: true },
   { to: '/history', label: 'History', icon: HistoryIcon, mobile: true },
-  { to: '/settings', label: 'Settings', icon: SettingsIcon, mobile: true },
+  { to: '/settings', label: 'Settings', icon: SettingsIcon, mobile: false },
 ]
 
 function ActiveWorkoutBanner() {

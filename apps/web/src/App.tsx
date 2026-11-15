@@ -2,9 +2,11 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router'
 import { RequireAuth } from './auth/RequireAuth'
 import { Layout } from './components/Layout'
 import { isSupabaseConfigured } from './lib/supabase'
+import { AddFoodPage } from './pages/AddFoodPage'
 import { AuthPage } from './pages/AuthPage'
 import { ExerciseProgressPage } from './pages/ExerciseProgressPage'
 import { ExercisesPage } from './pages/ExercisesPage'
+import { FoodPage } from './pages/FoodPage'
 import { HistoryPage } from './pages/HistoryPage'
 import { HomePage } from './pages/HomePage'
 import { ProgressPage } from './pages/ProgressPage'
@@ -40,6 +42,8 @@ export function App() {
               <Route path="routines/:id" element={<RoutineDetailPage />} />
               <Route path="routines/:id/edit" element={<RoutineEditorPage />} />
               <Route path="exercises" element={<ExercisesPage />} />
+              <Route path="food" element={<FoodPage />} />
+              <Route path="food/add" element={<AddFoodPage />} />
               <Route path="progress" element={<ProgressPage />} />
               <Route path="progress/exercises/:id" element={<ExerciseProgressPage />} />
               <Route path="history" element={<HistoryPage />} />

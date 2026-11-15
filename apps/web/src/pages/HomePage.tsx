@@ -1,10 +1,20 @@
-import { todayIsoDate } from '@setsmart/core'
+import { NO_TARGETS, sumNutrients, todayIsoDate } from '@setsmart/core'
 import { Link } from 'react-router'
-import { PlayIcon, PlusIcon } from '../components/icons'
+import { PlayIcon, PlusIcon, SettingsIcon } from '../components/icons'
 import { SessionCard } from '../components/SessionCard'
 import { StartWorkoutDialogs } from '../components/StartWorkoutDialogs'
 import { Button, Card, ErrorText } from '../components/ui'
-import { useBodyWeights, useProfile, useRoutines, useWeightUnit, useWorkoutSessions } from '../hooks/data'
+import {
+  useBodyWeights,
+  useEnergyUnit,
+  useFoodLogs,
+  useNutritionTargets,
+  useProfile,
+  useRoutines,
+  useWeightUnit,
+  useWorkoutSessions,
+} from '../hooks/data'
+import { energyLabel, energyNumber } from '../lib/nutrition'
 import { formatBodyWeight } from '../lib/progress'
 import { useNow } from '../hooks/useNow'
 import { useStartWorkout } from '../workout/useStartWorkout'
@@ -30,12 +40,17 @@ export function HomePage() {
 
   return (
     <>
-      <div className="mb-6">
-        <p className="text-sm text-zinc-400">{greeting(now)}{name ? `, ${name}` : ''}</p>
-        <h1 className="text-3xl font-black tracking-tight mt-0.5">Ready to train?</h1>
+      <div className="mb-6 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm text-zinc-400">{greeting(now)}{name ? `, ${name}` : ''}</p>
+          <h1 className="text-3xl font-black tracking-tight mt-0.5">Ready to train?</h1>
+        </div>
+        <Link to="/settings" className="md:hidden p-2 -mr-2 text-zinc-400 hover:text-zinc-100" aria-label="Settings">
+          <SettingsIcon className="size-6" />
+        </Link>
       </div>
 
-      <div className="grid sm:grid-cols-[2fr_1fr] gap-3 mb-6">
+      <div className="grid sm:grid-cols-[2fr_1fr] gap-3 mb-3">
         <Card className="p-5 flex items-center justify-between">
           <div>
             <p className="text-xs uppercase tracking-widest text-zinc-500 font-semibold">Last 7 days</p>
@@ -70,8 +85,9 @@ export function HomePage() {
           </Card>
         </Link>
       </div>
+      <TodayFoodCard />
 
-      <section className="mb-8">
+      <section className="mb-8 mt-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-bold">Your routines</h2>
           <Link to="/routines/new" className="text-sm text-accent flex items-center gap-1">
@@ -125,5 +141,43 @@ export function HomePage() {
         </div>
       </section>
     </>
+  )
+}
+
+function TodayFoodCard() {
+  const unit = useEnergyUnit()
+  const today = todayIsoDate()
+  const logs = useFoodLogs(today)
+  const targets = useNutritionTargets()
+  const totals = sumNutrients(logs.data ?? [])
+  const t = targets.data ?? NO_TARGETS
+  const label = energyLabel(unit)
+  const left = t.energyKj != null ? t.energyKj - totals.energyKj : null
+  return (
+    <Link to="/food" className="block group">
+      <Card className="p-5 group-hover:border-zinc-700 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+        <div>
+          <p className="text-xs uppercase tracking-widest text-zinc-500 font-semibold">Food today</p>
+          <p className="text-3xl font-black tabular-nums mt-1">
+            {energyNumber(unit, totals.energyKj)}{' '}
+            <span className="text-base font-medium text-zinc-400">
+              {t.energyKj != null ? `/ ${energyNumber(unit, t.energyKj)} ${label}` : label}
+            </span>
+          </p>
+        </div>
+        <div className="text-sm text-zinc-400 tabular-nums">
+          P {Math.round(totals.proteinG)} g · C {Math.round(totals.carbsG)} g · F {Math.round(totals.fatG)} g
+        </div>
+        <p className="basis-full text-xs text-accent">
+          {logs.data?.length === 0
+            ? 'Log your first meal →'
+            : left != null
+              ? left >= 0
+                ? `${energyNumber(unit, left)} ${label} left · Add food →`
+                : `${energyNumber(unit, -left)} ${label} over target · Add food →`
+              : 'Add food →'}
+        </p>
+      </Card>
+    </Link>
   )
 }
