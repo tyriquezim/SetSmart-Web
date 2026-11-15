@@ -1,4 +1,4 @@
-import { createWorkoutFromRoutine, getExerciseHistory, getRoutine, type ExerciseHistory } from '@gymbro/core'
+import { createWorkoutFromRoutine, getExerciseHistory, getRoutine, type ExerciseHistory } from '@setsmart/core'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'

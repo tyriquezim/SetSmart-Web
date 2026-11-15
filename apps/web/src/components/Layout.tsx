@@ -1,4 +1,4 @@
-import { currentSet } from '@gymbro/core'
+import { currentSet } from '@setsmart/core'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { useActiveWorkout } from '../workout/context'
 import { ChartIcon, DumbbellIcon, HistoryIcon, HomeIcon, PlayIcon, RoutineIcon, SettingsIcon } from './icons'
@@ -48,7 +48,7 @@ export function Layout() {
       <aside className="hidden md:flex md:flex-col md:w-56 md:shrink-0 md:border-r md:border-zinc-800/80 md:p-4 md:sticky md:top-0 md:h-dvh">
         <Link to="/" className="flex items-center gap-2 px-2 py-3 mb-4">
           <img src="/favicon.svg" alt="" className="size-8" />
-          <span className="text-xl font-black tracking-tight">GymBro</span>
+          <span className="text-xl font-black tracking-tight">SetSmart</span>
         </Link>
         <nav className="space-y-1">
           {NAV.map(({ to, label, icon: Icon, end }) => (

@@ -1,4 +1,4 @@
--- GymBro schema, phase 1: profiles, exercises, routines, logged workouts.
+-- SetSmart schema, phase 1: profiles, exercises, routines, logged workouts.
 -- All weights are stored in kilograms; the client converts for display.
 
 -- ---------------------------------------------------------------------------

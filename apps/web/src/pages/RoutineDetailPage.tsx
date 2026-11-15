@@ -1,4 +1,4 @@
-import { formatDuration, formatWeight, type PlannedSet, type WeightUnit } from '@gymbro/core'
+import { formatDuration, formatWeight, type PlannedSet, type WeightUnit } from '@setsmart/core'
 import { Link, useParams } from 'react-router'
 import { ClockIcon, PlayIcon } from '../components/icons'
 import { StartWorkoutDialogs } from '../components/StartWorkoutDialogs'

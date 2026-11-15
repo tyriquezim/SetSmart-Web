@@ -1,4 +1,4 @@
-import type { WorkoutAction, WorkoutState } from '@gymbro/core'
+import type { WorkoutAction, WorkoutState } from '@setsmart/core'
 import { createContext, useContext } from 'react'
 
 export interface ActiveWorkoutApi {

@@ -1,4 +1,4 @@
-import { todayIsoDate } from '@gymbro/core'
+import { todayIsoDate } from '@setsmart/core'
 import { Link } from 'react-router'
 import { PlayIcon, PlusIcon } from '../components/icons'
 import { SessionCard } from '../components/SessionCard'

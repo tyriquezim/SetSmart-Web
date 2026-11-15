@@ -1,4 +1,4 @@
-import { MUSCLE_GROUPS, type Exercise } from '@gymbro/core'
+import { MUSCLE_GROUPS, type Exercise } from '@setsmart/core'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Input } from './ui'
 

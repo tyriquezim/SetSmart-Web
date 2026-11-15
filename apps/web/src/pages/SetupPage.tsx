@@ -3,7 +3,7 @@ export function SetupPage() {
     <div className="min-h-dvh grid place-items-center px-4">
       <div className="max-w-lg rounded-3xl bg-zinc-900 border border-zinc-800 p-6 space-y-3 text-sm text-zinc-300">
         <h1 className="text-xl font-bold text-zinc-100">Connect Supabase</h1>
-        <p>GymBro needs a Supabase project. To finish setup:</p>
+        <p>SetSmart needs a Supabase project. To finish setup:</p>
         <ol className="list-decimal pl-5 space-y-1">
           <li>Create a project at supabase.com.</li>
           <li>

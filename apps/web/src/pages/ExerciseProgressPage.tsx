@@ -1,4 +1,4 @@
-import { formatWeight, isBodyweightOnly, metricSeries, personalRecords, type ProgressMetric, type WeightUnit } from '@gymbro/core'
+import { formatWeight, isBodyweightOnly, metricSeries, personalRecords, type ProgressMetric, type WeightUnit } from '@setsmart/core'
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { LineChart } from '../components/charts/LineChart'

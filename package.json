@@ -1,14 +1,14 @@
 {
-  "name": "gymbro",
+  "name": "setsmart",
   "private": true,
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev -w @gymbro/web",
-    "build": "npm run build -w @gymbro/web",
-    "test": "npm run test -w @gymbro/core",
+    "dev": "npm run dev -w @setsmart/web",
+    "build": "npm run build -w @setsmart/web",
+    "test": "npm run test -w @setsmart/core",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present"
   }

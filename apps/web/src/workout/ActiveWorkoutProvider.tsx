@@ -1,10 +1,10 @@
-import { currentSet, workoutReducer, type WorkoutAction, type WorkoutState } from '@gymbro/core'
+import { currentSet, workoutReducer, type WorkoutAction, type WorkoutState } from '@setsmart/core'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useUser } from '../auth/context'
 import { playTick, restOverAlert } from './alarm'
 import { ActiveWorkoutContext } from './context'
 
-const STORAGE_KEY = 'gymbro.activeWorkout.v1'
+const STORAGE_KEY = 'setsmart.activeWorkout.v1'
 /** If the app was closed for longer than this past the end of rest, don't sound the alarm on reopen. */
 const STALE_ALARM_MS = 60_000
 

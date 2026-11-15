@@ -1,4 +1,4 @@
-import { kgTo, type WeightUnit } from '@gymbro/core'
+import { kgTo, type WeightUnit } from '@setsmart/core'
 
 export type RangeKey = '1M' | '3M' | '6M' | '1Y' | 'All'
 

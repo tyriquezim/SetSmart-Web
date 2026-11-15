@@ -20,7 +20,7 @@ import {
   type Profile,
   type RoutineInput,
   type WeightUnit,
-} from '@gymbro/core'
+} from '@setsmart/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useUser } from '../auth/context'
 import { supabase as db } from '../lib/supabase'

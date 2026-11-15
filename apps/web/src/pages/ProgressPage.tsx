@@ -8,7 +8,7 @@ import {
   toKg,
   type BodyWeightEntry,
   type WeightUnit,
-} from '@gymbro/core'
+} from '@setsmart/core'
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { LineChart } from '../components/charts/LineChart'

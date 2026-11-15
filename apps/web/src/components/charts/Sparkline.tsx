@@ -1,4 +1,4 @@
-import type { TimePoint } from '@gymbro/core'
+import type { TimePoint } from '@setsmart/core'
 import { chartTheme } from './theme'
 
 /** Tiny trend line: history in the de-emphasis gray, latest point in the series color. Decorative — values are shown as text alongside. */

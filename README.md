@@ -1,4 +1,4 @@
-# GymBro
+# SetSmart
 
 Workout + nutrition tracker. React web app now, iOS/Android (Expo) later — both share `packages/core`.
 

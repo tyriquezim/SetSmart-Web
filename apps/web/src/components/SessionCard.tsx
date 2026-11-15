@@ -1,4 +1,4 @@
-import { formatWeight, type WeightUnit, type WorkoutSessionSummary } from '@gymbro/core'
+import { formatWeight, type WeightUnit, type WorkoutSessionSummary } from '@setsmart/core'
 import { Link } from 'react-router'
 import { formatDate, minutesBetween } from '../lib/format'
 import { Card } from './ui'

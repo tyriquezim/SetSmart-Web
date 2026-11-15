@@ -1,4 +1,4 @@
-import type { Exercise } from '@gymbro/core'
+import type { Exercise } from '@setsmart/core'
 import { useState } from 'react'
 import { useExercises } from '../hooks/data'
 import { ExerciseFormModal } from './ExerciseFormModal'

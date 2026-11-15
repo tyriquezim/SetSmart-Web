@@ -1,5 +1,5 @@
 {
-  "name": "@gymbro/web",
+  "name": "@setsmart/web",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -11,7 +11,7 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
-    "@gymbro/core": "*",
+    "@setsmart/core": "*",
     "@supabase/supabase-js": "^2.119.0",
     "@tanstack/react-query": "^5.107.1",
     "react": "^19.3.1",

@@ -6,7 +6,7 @@ import {
   type PlannedSet,
   type Routine,
   type WeightUnit,
-} from '@gymbro/core'
+} from '@setsmart/core'
 import { useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { ExercisePicker } from '../components/ExercisePicker'

@@ -1,4 +1,4 @@
-import { formatWeight, type LoggedWorkoutSet } from '@gymbro/core'
+import { formatWeight, type LoggedWorkoutSet } from '@setsmart/core'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { Button, Card, ConfirmModal, ErrorText, LoadingBlock, PageHeader } from '../components/ui'

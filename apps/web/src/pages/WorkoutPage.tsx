@@ -15,7 +15,7 @@ import {
   type WeightUnit,
   type WorkoutAction,
   type WorkoutState,
-} from '@gymbro/core'
+} from '@setsmart/core'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'

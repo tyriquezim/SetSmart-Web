@@ -1,4 +1,4 @@
-import { EQUIPMENT, MUSCLE_GROUPS, type Exercise } from '@gymbro/core'
+import { EQUIPMENT, MUSCLE_GROUPS, type Exercise } from '@setsmart/core'
 import { useState, type FormEvent } from 'react'
 import { useCreateExercise, useUpdateExercise } from '../hooks/data'
 import { Button, ErrorText, Field, Input, Modal, Select } from './ui'

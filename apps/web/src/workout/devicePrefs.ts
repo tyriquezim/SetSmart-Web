@@ -5,7 +5,7 @@ export interface DevicePrefs {
   countdownBeeps: boolean
 }
 
-const KEY = 'gymbro.devicePrefs.v1'
+const KEY = 'setsmart.devicePrefs.v1'
 const DEFAULTS: DevicePrefs = { sound: true, vibrate: true, countdownBeeps: true }
 
 export function loadDevicePrefs(): DevicePrefs {

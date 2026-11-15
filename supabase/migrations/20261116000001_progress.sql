@@ -1,4 +1,4 @@
--- GymBro phase 2: body weight log and per-exercise progress stats.
+-- SetSmart phase 2: body weight log and per-exercise progress stats.
 
 -- ---------------------------------------------------------------------------
 -- Body weight: at most one entry per user per day (re-logging a day updates it).

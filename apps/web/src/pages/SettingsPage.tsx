@@ -1,4 +1,4 @@
-import type { EnergyUnit, WeightUnit } from '@gymbro/core'
+import type { EnergyUnit, WeightUnit } from '@setsmart/core'
 import { useState } from 'react'
 import { useUser } from '../auth/context'
 import { Button, Card, ErrorText, Field, Input, LoadingBlock, PageHeader, Segmented } from '../components/ui'
@@ -105,7 +105,7 @@ export function SettingsPage() {
             )}
           </div>
           <p className="text-xs text-zinc-500 mt-3">
-            Notifications alert you when rest ends while GymBro is in a background tab
+            Notifications alert you when rest ends while SetSmart is in a background tab
             {notifStatus === 'denied' && ' (currently blocked in your browser settings)'}.
           </p>
         </Card>

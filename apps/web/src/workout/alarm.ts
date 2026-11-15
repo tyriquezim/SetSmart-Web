@@ -63,7 +63,7 @@ export function restOverAlert(nextUp: string): void {
   // A system notification helps when the tab is in the background.
   if (document.visibilityState === 'hidden' && 'Notification' in window && Notification.permission === 'granted') {
     try {
-      new Notification('Rest over — time to lift!', { body: nextUp, tag: 'gymbro-rest', requireInteraction: false })
+      new Notification('Rest over — time to lift!', { body: nextUp, tag: 'setsmart-rest', requireInteraction: false })
     } catch {
       // Some mobile browsers only allow notifications via a service worker.
     }

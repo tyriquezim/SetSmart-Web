@@ -1,4 +1,4 @@
-import type { TimePoint } from '@gymbro/core'
+import type { TimePoint } from '@setsmart/core'
 import { useMemo, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import { formatTick, niceTicks } from './scale'
 import { chartTheme } from './theme'

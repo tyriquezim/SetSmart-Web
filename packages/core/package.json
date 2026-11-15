@@ -1,9 +1,9 @@
 {
-  "name": "@gymbro/core",
+  "name": "@setsmart/core",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Platform-agnostic GymBro logic shared by web and mobile: types, Supabase data access, units, and the workout engine.",
+  "description": "Platform-agnostic SetSmart logic shared by web and mobile: types, Supabase data access, units, and the workout engine.",
   "exports": {
     ".": "./src/index.ts"
   },
