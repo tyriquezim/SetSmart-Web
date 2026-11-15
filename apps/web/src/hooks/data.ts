@@ -1,5 +1,9 @@
 import {
   archiveExercise,
+  deleteBodyWeight,
+  listBodyWeights,
+  listExerciseSessionStats,
+  upsertBodyWeight,
   createExercise,
   deleteRoutine,
   deleteWorkoutSession,
@@ -28,6 +32,9 @@ export const keys = {
   routine: (id: string) => ['routines', id] as const,
   sessions: ['sessions'] as const,
   session: (id: string) => ['sessions', id] as const,
+  bodyWeights: ['bodyWeights'] as const,
+  /** Everything derived from logged sets; invalidate when workouts change. */
+  stats: ['stats'] as const,
 }
 
 // ---- Profile ---------------------------------------------------------------
@@ -130,6 +137,38 @@ export function useDeleteWorkoutSession() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => deleteWorkoutSession(db, id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.sessions }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: keys.sessions })
+      void qc.invalidateQueries({ queryKey: keys.stats })
+    },
+  })
+}
+
+// ---- Progress ----------------------------------------------------------------
+
+/** Per-session stats for every exercise the user has logged, oldest first. */
+export function useExerciseStats() {
+  return useQuery({ queryKey: keys.stats, queryFn: () => listExerciseSessionStats(db) })
+}
+
+export function useBodyWeights() {
+  return useQuery({ queryKey: keys.bodyWeights, queryFn: () => listBodyWeights(db) })
+}
+
+export function useUpsertBodyWeight() {
+  const user = useUser()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (entry: { measuredOn: string; weightKg: number; note?: string | null }) =>
+      upsertBodyWeight(db, user.id, entry),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.bodyWeights }),
+  })
+}
+
+export function useDeleteBodyWeight() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => deleteBodyWeight(db, id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.bodyWeights }),
   })
 }

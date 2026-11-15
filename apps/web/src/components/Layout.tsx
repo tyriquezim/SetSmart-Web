@@ -1,14 +1,16 @@
 import { currentSet } from '@gymbro/core'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { useActiveWorkout } from '../workout/context'
-import { DumbbellIcon, HistoryIcon, HomeIcon, PlayIcon, RoutineIcon, SettingsIcon } from './icons'
+import { ChartIcon, DumbbellIcon, HistoryIcon, HomeIcon, PlayIcon, RoutineIcon, SettingsIcon } from './icons'
 
+// `mobile: false` items live only in the desktop sidebar; the phone tab bar fits five.
 const NAV = [
-  { to: '/', label: 'Home', icon: HomeIcon, end: true },
-  { to: '/routines', label: 'Routines', icon: RoutineIcon },
-  { to: '/exercises', label: 'Exercises', icon: DumbbellIcon },
-  { to: '/history', label: 'History', icon: HistoryIcon },
-  { to: '/settings', label: 'Settings', icon: SettingsIcon },
+  { to: '/', label: 'Home', icon: HomeIcon, end: true, mobile: true },
+  { to: '/routines', label: 'Routines', icon: RoutineIcon, mobile: true },
+  { to: '/exercises', label: 'Exercises', icon: DumbbellIcon, mobile: false },
+  { to: '/progress', label: 'Progress', icon: ChartIcon, mobile: true },
+  { to: '/history', label: 'History', icon: HistoryIcon, mobile: true },
+  { to: '/settings', label: 'Settings', icon: SettingsIcon, mobile: true },
 ]
 
 function ActiveWorkoutBanner() {
@@ -80,7 +82,7 @@ export function Layout() {
         </div>
         <nav className="md:hidden pointer-events-auto bg-zinc-950/95 backdrop-blur border-t border-zinc-800/80 pb-safe">
           <div className="grid grid-cols-5">
-            {NAV.map(({ to, label, icon: Icon, end }) => (
+            {NAV.filter((n) => n.mobile).map(({ to, label, icon: Icon, end }) => (
               <NavLink
                 key={to}
                 to={to}

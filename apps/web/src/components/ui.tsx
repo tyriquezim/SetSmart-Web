@@ -245,6 +245,41 @@ export function Stepper({
   )
 }
 
+// ---- Segmented control -----------------------------------------------------
+
+export function Segmented<T extends string>({
+  value,
+  options,
+  onChange,
+  disabled,
+  label,
+}: {
+  label?: string
+  value: T
+  options: Array<{ value: T; label: string }>
+  onChange: (v: T) => void
+  disabled?: boolean
+}) {
+  return (
+    <div role="group" aria-label={label} className="inline-flex rounded-xl bg-zinc-950 border border-zinc-800 p-1">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          disabled={disabled}
+          onClick={() => onChange(o.value)}
+          aria-pressed={value === o.value}
+          className={`px-3 h-8 rounded-lg whitespace-nowrap text-sm font-medium transition-colors ${
+            value === o.value ? 'bg-zinc-800 text-accent' : 'text-zinc-400 hover:text-zinc-100'
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 // ---- Modal -----------------------------------------------------------------
 
 export function Modal({

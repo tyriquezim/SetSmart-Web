@@ -3,9 +3,11 @@ import { RequireAuth } from './auth/RequireAuth'
 import { Layout } from './components/Layout'
 import { isSupabaseConfigured } from './lib/supabase'
 import { AuthPage } from './pages/AuthPage'
+import { ExerciseProgressPage } from './pages/ExerciseProgressPage'
 import { ExercisesPage } from './pages/ExercisesPage'
 import { HistoryPage } from './pages/HistoryPage'
 import { HomePage } from './pages/HomePage'
+import { ProgressPage } from './pages/ProgressPage'
 import { RoutineDetailPage } from './pages/RoutineDetailPage'
 import { RoutineEditorPage } from './pages/RoutineEditorPage'
 import { RoutinesPage } from './pages/RoutinesPage'
@@ -38,6 +40,8 @@ export function App() {
               <Route path="routines/:id" element={<RoutineDetailPage />} />
               <Route path="routines/:id/edit" element={<RoutineEditorPage />} />
               <Route path="exercises" element={<ExercisesPage />} />
+              <Route path="progress" element={<ProgressPage />} />
+              <Route path="progress/exercises/:id" element={<ExerciseProgressPage />} />
               <Route path="history" element={<HistoryPage />} />
               <Route path="history/:id" element={<SessionPage />} />
               <Route path="settings" element={<SettingsPage />} />

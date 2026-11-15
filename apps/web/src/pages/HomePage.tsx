@@ -1,9 +1,11 @@
+import { todayIsoDate } from '@gymbro/core'
 import { Link } from 'react-router'
 import { PlayIcon, PlusIcon } from '../components/icons'
 import { SessionCard } from '../components/SessionCard'
 import { StartWorkoutDialogs } from '../components/StartWorkoutDialogs'
 import { Button, Card, ErrorText } from '../components/ui'
-import { useProfile, useRoutines, useWeightUnit, useWorkoutSessions } from '../hooks/data'
+import { useBodyWeights, useProfile, useRoutines, useWeightUnit, useWorkoutSessions } from '../hooks/data'
+import { formatBodyWeight } from '../lib/progress'
 import { useNow } from '../hooks/useNow'
 import { useStartWorkout } from '../workout/useStartWorkout'
 
@@ -18,6 +20,8 @@ export function HomePage() {
   const sessions = useWorkoutSessions(20)
   const unit = useWeightUnit()
   const starter = useStartWorkout()
+  const bodyWeights = useBodyWeights()
+  const latestWeight = bodyWeights.data?.[bodyWeights.data.length - 1]
   const now = useNow(60_000)
 
   const weekAgo = now - 7 * 86_400_000
@@ -31,32 +35,41 @@ export function HomePage() {
         <h1 className="text-3xl font-black tracking-tight mt-0.5">Ready to train?</h1>
       </div>
 
-      <Card className="p-5 mb-6 flex items-center justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-zinc-500 font-semibold">Last 7 days</p>
-          <p className="text-3xl font-black tabular-nums mt-1">
-            {thisWeek} <span className="text-base font-medium text-zinc-400">{thisWeek === 1 ? 'workout' : 'workouts'}</span>
-          </p>
-        </div>
-        <div className="flex gap-1.5" aria-hidden>
-          {Array.from({ length: 7 }, (_, i) => {
-            const day = new Date(now)
-            day.setHours(0, 0, 0, 0)
-            day.setDate(day.getDate() - (6 - i))
-            const next = day.getTime() + 86_400_000
-            const trained = sessions.data?.some((s) => {
-              const t = Date.parse(s.startedAt)
-              return t >= day.getTime() && t < next
-            })
-            return (
-              <div key={i} className="flex flex-col items-center gap-1">
-                <div className={`size-3 rounded-full ${trained ? 'bg-accent' : 'bg-zinc-800'}`} />
-                <span className="text-[10px] text-zinc-600">{day.toLocaleDateString(undefined, { weekday: 'narrow' })}</span>
-              </div>
-            )
-          })}
-        </div>
-      </Card>
+      <div className="grid sm:grid-cols-[2fr_1fr] gap-3 mb-6">
+        <Card className="p-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-widest text-zinc-500 font-semibold">Last 7 days</p>
+            <p className="text-3xl font-black tabular-nums mt-1">
+              {thisWeek} <span className="text-base font-medium text-zinc-400">{thisWeek === 1 ? 'workout' : 'workouts'}</span>
+            </p>
+          </div>
+          <div className="flex gap-1.5" aria-hidden>
+            {Array.from({ length: 7 }, (_, i) => {
+              const day = new Date(now)
+              day.setHours(0, 0, 0, 0)
+              day.setDate(day.getDate() - (6 - i))
+              const next = day.getTime() + 86_400_000
+              const trained = sessions.data?.some((s) => {
+                const t = Date.parse(s.startedAt)
+                return t >= day.getTime() && t < next
+              })
+              return (
+                <div key={i} className="flex flex-col items-center gap-1">
+                  <div className={`size-3 rounded-full ${trained ? 'bg-accent' : 'bg-zinc-800'}`} />
+                  <span className="text-[10px] text-zinc-600">{day.toLocaleDateString(undefined, { weekday: 'narrow' })}</span>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+        <Link to="/progress" className="block group">
+          <Card className="p-5 h-full group-hover:border-zinc-700">
+            <p className="text-xs uppercase tracking-widest text-zinc-500 font-semibold">Body weight</p>
+            <p className="text-3xl font-black mt-1">{latestWeight ? formatBodyWeight(unit, latestWeight.weightKg) : '—'}</p>
+            <p className="text-xs text-accent mt-1">{!latestWeight ? 'Log your weight →' : latestWeight.measuredOn === todayIsoDate() ? 'Logged today ✓' : 'Log today →'}</p>
+          </Card>
+        </Link>
+      </div>
 
       <section className="mb-8">
         <div className="flex items-center justify-between mb-3">

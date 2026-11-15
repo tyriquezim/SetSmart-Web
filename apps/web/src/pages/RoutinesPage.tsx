@@ -14,11 +14,16 @@ export function RoutinesPage() {
       <PageHeader
         title="Routines"
         action={
-          <Link to="/routines/new">
-            <Button variant="primary" tabIndex={-1}>
-              <PlusIcon className="size-4" /> New
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link to="/exercises" className="md:hidden">
+              <Button variant="ghost" tabIndex={-1}>Exercises</Button>
+            </Link>
+            <Link to="/routines/new">
+              <Button variant="primary" tabIndex={-1}>
+                <PlusIcon className="size-4" /> New
+              </Button>
+            </Link>
+          </div>
         }
       />
       <StartWorkoutDialogs starter={starter} />

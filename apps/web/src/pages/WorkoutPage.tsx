@@ -9,6 +9,7 @@ import {
   toLogPayload,
   weightInputValue,
   weightStep,
+  workoutPRs,
   workoutTotals,
   type CurrentSetInfo,
   type WeightUnit,
@@ -18,7 +19,7 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { CheckIcon, SkipIcon } from '../components/icons'
+import { CheckIcon, SkipIcon, TrophyIcon } from '../components/icons'
 import { Button, Card, ConfirmModal, EmptyState, ErrorText, Input, Modal, NumberInput, Stepper } from '../components/ui'
 import { keys, useWeightUnit } from '../hooks/data'
 import { useNow } from '../hooks/useNow'
@@ -144,10 +145,11 @@ function SetForm({
   unit: WeightUnit
   dispatch: (a: WorkoutAction) => void
 }) {
-  // Prefill: weight carries over from your previous set of this exercise (you may have adjusted it); reps use the target.
+  // Prefill weight from, in order: your previous set today (you may have adjusted it),
+  // the routine's target, then what you lifted last time. Reps use the target.
   const [reps, setReps] = useState<number | null>(cur.target.reps)
   const [weight, setWeight] = useState<number | null>(
-    weightInputValue(unit, cur.previous?.weightKg ?? cur.target.weightKg),
+    weightInputValue(unit, cur.previous?.weightKg ?? cur.target.weightKg ?? cur.lastTime?.weightKg ?? null),
   )
   const [moreOpen, setMoreOpen] = useState(false)
   const [editing, setEditing] = useState<number | null>(null)
@@ -162,6 +164,11 @@ function SetForm({
         </p>
         <h2 className="text-3xl font-black tracking-tight mt-1 leading-tight">{cur.exercise.name}</h2>
         <p className="text-sm text-zinc-400 mt-1">Target: {targetLabel(cur, unit)}</p>
+        {cur.lastTime && (
+          <p className="text-sm text-zinc-500">
+            Last time: {cur.lastTime.reps} × {formatWeight(unit, cur.lastTime.weightKg)}
+          </p>
+        )}
 
         <div className="flex flex-col sm:flex-row gap-4 mt-6">
           <Stepper label="Reps" value={reps} onChange={setReps} step={1} decimals={false} />
@@ -370,6 +377,11 @@ function RestScreen({ workout, unit, dispatch }: { workout: WorkoutState; unit: 
         <p className="text-sm text-zinc-400">
           Set {next.setNumber} of {next.totalSets} · {targetLabel(next, unit)}
         </p>
+        {next.lastTime && (
+          <p className="text-sm text-zinc-500">
+            Last time: {next.lastTime.reps} × {formatWeight(unit, next.lastTime.weightKg)}
+          </p>
+        )}
         {postponable && (
           <Button className="w-full mt-3" onClick={() => dispatch({ type: 'postpone', to: 'next' })}>
             <SkipIcon className="size-4" /> Machine taken? Do {workout.exercises[workout.queue[1]].name} first
@@ -468,12 +480,14 @@ function SummaryScreen({
     mutationFn: () => logWorkout(supabase, toLogPayload(workout, notes.trim() || null)),
     onSuccess: (id) => {
       void qc.invalidateQueries({ queryKey: keys.sessions })
+      void qc.invalidateQueries({ queryKey: keys.stats })
       discard()
       navigate(`/history/${id}`, { replace: true })
     },
   })
   const durationS = (Date.parse(workout.finishedAt ?? new Date().toISOString()) - Date.parse(workout.startedAt)) / 1000
   const performed = workout.performedOrder.map((i) => workout.exercises[i])
+  const prs = new Map(workoutPRs(workout).map((p) => [workout.exercises[p.exerciseIndex], p]))
 
   return (
     <section className="space-y-4">
@@ -498,7 +512,15 @@ function SummaryScreen({
         <Card className="p-4 divide-y divide-zinc-800">
           {performed.map((e, i) => (
             <div key={i} className="py-2.5 first:pt-0 last:pb-0">
-              <p className="font-medium">{e.name}</p>
+              <p className="font-medium flex flex-wrap items-center gap-2">
+                {e.name}
+                {prs.has(e) && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/15 text-amber-200 text-xs font-semibold px-2 py-0.5">
+                    <TrophyIcon className="size-3.5" />
+                    {[prs.get(e)!.weight && 'Heaviest ever', prs.get(e)!.e1rm && 'Best est. 1RM'].filter(Boolean).join(' · ')}
+                  </span>
+                )}
+              </p>
               <p className="text-sm text-zinc-400 tabular-nums">
                 {e.logged.map((s) => `${s.reps}×${formatWeight(unit, s.weightKg)}`).join(' · ')}
               </p>

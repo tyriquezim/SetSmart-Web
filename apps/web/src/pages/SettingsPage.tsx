@@ -1,42 +1,11 @@
 import type { EnergyUnit, WeightUnit } from '@gymbro/core'
 import { useState } from 'react'
 import { useUser } from '../auth/context'
-import { Button, Card, ErrorText, Field, Input, LoadingBlock, PageHeader } from '../components/ui'
+import { Button, Card, ErrorText, Field, Input, LoadingBlock, PageHeader, Segmented } from '../components/ui'
 import { useProfile, useUpdateProfile } from '../hooks/data'
 import { supabase } from '../lib/supabase'
 import { playAlarm, requestNotificationPermission } from '../workout/alarm'
 import { loadDevicePrefs, saveDevicePrefs, type DevicePrefs } from '../workout/devicePrefs'
-
-function Segmented<T extends string>({
-  value,
-  options,
-  onChange,
-  disabled,
-}: {
-  value: T
-  options: Array<{ value: T; label: string }>
-  onChange: (v: T) => void
-  disabled?: boolean
-}) {
-  return (
-    <div className="inline-flex rounded-xl bg-zinc-950 border border-zinc-800 p-1">
-      {options.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          disabled={disabled}
-          onClick={() => onChange(o.value)}
-          aria-pressed={value === o.value}
-          className={`px-4 h-9 rounded-lg text-sm font-medium transition-colors ${
-            value === o.value ? 'bg-zinc-800 text-accent' : 'text-zinc-400 hover:text-zinc-100'
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  )
-}
 
 function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (

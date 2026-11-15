@@ -52,3 +52,9 @@ export const CheckIcon = (p: SVGProps<SVGSVGElement>) => (
 export const SkipIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}><path d="m5 4 10 8-10 8zM19 5v14" /></svg>
 )
+export const ChartIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}><path d="M3 3v18h18" /><path d="m7 15 4-5 3 3 5-7" /></svg>
+)
+export const TrophyIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3" /></svg>
+)
