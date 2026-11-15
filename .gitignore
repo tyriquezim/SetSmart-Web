@@ -28,3 +28,6 @@ dist-ssr
 .env.*
 !.env.example
 *.tsbuildinfo
+
+# Personal iOS build brief (contains config values)
+docs/ios-app-brief.md

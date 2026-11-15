@@ -10,6 +10,10 @@
 [build.environment]
   # Vite 8 needs Node 20.19+ or 22.12+.
   NODE_VERSION = "22"
+  # These three are built into the browser JavaScript on purpose (the Supabase key is the
+  # public publishable key, protected by row-level security), so Netlify's secrets scan
+  # must not fail the build when it finds them in the output.
+  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_ANON_KEY,VITE_USDA_API_KEY"
 
 # The app does its own routing, so serve index.html for any path that isn't a real
 # file (otherwise refreshing /food or opening a shared link gives a 404).
