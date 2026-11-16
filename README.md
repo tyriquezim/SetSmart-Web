@@ -70,6 +70,19 @@ when you unlock. The native app will use scheduled local notifications to fix th
   build that loads only when the scanner opens. The camera needs HTTPS (or `localhost`): to scan from your phone
   against the dev server, expose it over HTTPS (e.g. a tunnel) or type the barcode number instead.
 
+## Energy estimates
+
+Estimated energy burned is worked out in `packages/core/src/energy/estimates.ts` and always shown as an
+estimate. The in-app "How it's worked out" sheet explains it to users with their own numbers and sources.
+
+- **Resting (BMR):** Cunningham (1980), `500 + 22 × fat-free mass`, when a body fat % was logged within 90 days.
+  Otherwise Mifflin-St Jeor (1990) from weight, height and age. If sex isn't set, the average of the two constants is used.
+- **Everyday activity:** resting × (PAL − 1), with PAL 1.4 / 1.55 / 1.75 from the FAO/WHO/UNU (2004) ranges.
+  It's assumed to be 1.4 until the user picks a level.
+- **Workouts:** `(MET × 3.5 × kg ÷ 200 − resting per minute) × minutes`, with 3.5 METs (moderate) or 6.0 METs
+  (vigorous) from the 2024 Adult Compendium. Only the energy above resting is counted, and sessions are capped at 3 hours.
+- Displayed estimates are rounded to 10 kcal or 50 kJ so they don't look more precise than they are.
+
 ## Data model
 
 All weights are stored in kilograms (displayed in kg or lb per user setting); energy will be stored in kJ.

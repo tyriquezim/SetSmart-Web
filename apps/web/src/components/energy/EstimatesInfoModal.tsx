@@ -58,7 +58,7 @@ export function EstimatesInfoModal({
           )}
           <p>
             <strong className="text-zinc-300">If you've logged a body fat %</strong> within {BODY_FAT_MAX_AGE_DAYS} days, we use the
-            Cunningham equation, which works from fat-free mass (everything except fat, mostly muscle). Muscle burns more
+            Cunningham equation, which works from fat-free mass (muscle, organs, bone and water: everything except fat). Fat-free mass burns more
             energy than fat, so this suits people who lift.
             <Cite ids={['cunningham', 'tenhaaf']} />
           </p>
