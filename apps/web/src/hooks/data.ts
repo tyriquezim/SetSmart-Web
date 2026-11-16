@@ -33,6 +33,8 @@ import {
   listExercises,
   listRoutines,
   listWorkoutSessions,
+  listWorkoutTimes,
+  addDays,
   saveRoutine,
   updateExercise,
   updateProfile,
@@ -156,6 +158,19 @@ export function useWorkoutSessions(limit = 20) {
   return useQuery({ queryKey: [...keys.sessions, { limit }], queryFn: () => listWorkoutSessions(db, { limit }) })
 }
 
+/** Start/finish times of workouts on local days `from`..`to` inclusive (YYYY-MM-DD), for energy estimates. */
+export function useWorkoutTimes(from: string, to: string = from) {
+  return useQuery({
+    queryKey: [...keys.sessions, 'times', from, to],
+    queryFn: () =>
+      listWorkoutTimes(
+        db,
+        new Date(`${from}T00:00:00`).toISOString(),
+        new Date(`${addDays(to, 1)}T00:00:00`).toISOString(),
+      ),
+  })
+}
+
 export function useWorkoutSession(id: string | undefined) {
   return useQuery({
     queryKey: keys.session(id ?? ''),
@@ -190,7 +205,7 @@ export function useUpsertBodyWeight() {
   const user = useUser()
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (entry: { measuredOn: string; weightKg: number; note?: string | null }) =>
+    mutationFn: (entry: { measuredOn: string; weightKg: number; bodyFatPct?: number | null; note?: string | null }) =>
       upsertBodyWeight(db, user.id, entry),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.bodyWeights }),
   })
