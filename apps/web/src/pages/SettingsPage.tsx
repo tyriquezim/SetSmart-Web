@@ -1,6 +1,7 @@
 import type { EnergyUnit, WeightUnit } from '@setsmart/core'
 import { useState } from 'react'
 import { useUser } from '../auth/context'
+import { BodyDetailsCard } from '../components/energy/BodyDetailsCard'
 import { Button, Card, ErrorText, Field, Input, LoadingBlock, PageHeader, Segmented } from '../components/ui'
 import { useProfile, useUpdateProfile } from '../hooks/data'
 import { supabase } from '../lib/supabase'
@@ -87,6 +88,8 @@ export function SettingsPage() {
           </div>
           <ErrorText error={update.error} />
         </Card>
+
+        <BodyDetailsCard profile={p} />
 
         <Card className="p-5">
           <h2 className="font-semibold mb-1">Rest timer alerts</h2>

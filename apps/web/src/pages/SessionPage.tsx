@@ -2,7 +2,8 @@ import { formatWeight, type LoggedWorkoutSet } from '@setsmart/core'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { Button, Card, ConfirmModal, ErrorText, LoadingBlock, PageHeader } from '../components/ui'
-import { useDeleteWorkoutSession, useWeightUnit, useWorkoutSession } from '../hooks/data'
+import { useDeleteWorkoutSession, useEnergyUnit, useWeightUnit, useWorkoutSession } from '../hooks/data'
+import { formatEstimate, useWorkoutEnergy } from '../lib/energy'
 import { formatDate, formatTime, minutesBetween } from '../lib/format'
 
 export function SessionPage() {
@@ -12,6 +13,8 @@ export function SessionPage() {
   const unit = useWeightUnit()
   const del = useDeleteWorkoutSession()
   const [confirm, setConfirm] = useState(false)
+  const energyUnit = useEnergyUnit()
+  const kcal = useWorkoutEnergy(session.data)
 
   if (session.isPending) return <LoadingBlock />
   if (session.error) return <ErrorText error={session.error} />
@@ -48,6 +51,19 @@ export function SessionPage() {
           </Card>
         ))}
       </dl>
+      <p className="text-xs text-zinc-500 -mt-2 mb-5">
+        {kcal != null ? (
+          <>
+            Estimated energy burned: ≈ {formatEstimate(energyUnit, kcal)} above resting. This is an estimate from your body
+            details and the workout's length, not a measurement.
+          </>
+        ) : (
+          <>
+            Add your <Link to="/settings" className="text-accent">body details</Link> and{' '}
+            <Link to="/progress" className="text-accent">weight</Link> to see an estimate of the energy this burned.
+          </>
+        )}
+      </p>
       {s.notes && <p className="text-sm text-zinc-300 italic mb-5">“{s.notes}”</p>}
       <div className="space-y-3">
         {groups.map((sets) => (

@@ -1,9 +1,13 @@
 import { formatWeight, type WeightUnit, type WorkoutSessionSummary } from '@setsmart/core'
+import { useEnergyUnit } from '../hooks/data'
+import { formatEstimate, useWorkoutEnergy } from '../lib/energy'
 import { Link } from 'react-router'
 import { formatDate, minutesBetween } from '../lib/format'
 import { Card } from './ui'
 
 export function SessionCard({ session, unit }: { session: WorkoutSessionSummary; unit: WeightUnit }) {
+  const energyUnit = useEnergyUnit()
+  const kcal = useWorkoutEnergy(session)
   return (
     <Link to={`/history/${session.id}`} className="block group">
       <Card className="p-4 flex items-center gap-4 group-hover:border-zinc-700">
@@ -16,6 +20,7 @@ export function SessionCard({ session, unit }: { session: WorkoutSessionSummary;
           <p className="text-sm text-zinc-500">
             {minutesBetween(session.startedAt, session.finishedAt)} min · {session.setCount} sets ·{' '}
             {formatWeight(unit, session.volumeKg)}
+            {kcal != null && <span title="Estimated energy burned above resting"> · ≈ {formatEstimate(energyUnit, kcal)}</span>}
           </p>
         </div>
       </Card>

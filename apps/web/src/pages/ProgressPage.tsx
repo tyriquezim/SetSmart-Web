@@ -71,6 +71,7 @@ function BodyWeightSection() {
               <span className="block sm:inline text-sm text-zinc-400 sm:ml-2">
                 {formatDate(latest.measuredOn + 'T12:00:00')} · 7-day avg {formatBodyWeight(unit, latestAvg.v)}
                 {change30 != null && ` (${formatSignedWeight(unit, change30)} in 30 days)`}
+                {latest.bodyFatPct != null && ` · ${latest.bodyFatPct}% body fat`}
               </span>
             </p>
           ) : (
@@ -107,16 +108,20 @@ function LogWeightForm({ unit }: { unit: WeightUnit }) {
   const upsert = useUpsertBodyWeight()
   const [date, setDate] = useState(() => todayIsoDate())
   const [value, setValue] = useState<number | null>(null)
+  const [fat, setFat] = useState<number | null>(null)
   const [saved, setSaved] = useState(false)
+
+  const fatOk = fat == null || (fat >= 3 && fat <= 70)
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
-    if (value == null || value <= 0) return
+    if (value == null || value <= 0 || !fatOk) return
     upsert.mutate(
-      { measuredOn: date, weightKg: toKg(unit, value) },
+      { measuredOn: date, weightKg: toKg(unit, value), bodyFatPct: fat },
       {
         onSuccess: () => {
           setValue(null)
+          setFat(null)
           setSaved(true)
         },
       },
@@ -139,10 +144,16 @@ function LogWeightForm({ unit }: { unit: WeightUnit }) {
           <NumberInput aria-label={`Weight in ${unit}`} placeholder="Weight" allowEmpty min={0} value={value} onChange={(v) => { setValue(v); setSaved(false) }} className="pr-10" />
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-zinc-500 pointer-events-none">{unit}</span>
         </div>
-        <Button type="submit" variant="primary" className="h-11" loading={upsert.isPending} disabled={value == null || value <= 0}>
+        <div className="relative flex-1 min-w-28">
+          <NumberInput aria-label="Body fat percent (optional)" placeholder="Body fat" allowEmpty min={3} max={70} value={fat} onChange={(v) => { setFat(v); setSaved(false) }} className="pr-8" />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-zinc-500 pointer-events-none">%</span>
+        </div>
+        <Button type="submit" variant="primary" className="h-11" loading={upsert.isPending} disabled={value == null || value <= 0 || !fatOk}>
           Log
         </Button>
       </div>
+      <p className="text-xs text-zinc-500">Body fat % is optional (e.g. from a smart scale). It makes energy estimates reflect your muscle.</p>
+      {!fatOk && <p className="text-xs text-red-300">Enter a body fat % between 3 and 70.</p>}
       {saved && <p className="text-xs text-lime-200">Saved. Logging the same day again replaces that day's entry.</p>}
       <ErrorText error={upsert.error} />
     </form>
@@ -158,6 +169,7 @@ function WeightTable({ entries, unit }: { entries: BodyWeightEntry[]; unit: Weig
           <tr className="text-xs text-zinc-500 text-left">
             <th className="font-normal pb-1">Date</th>
             <th className="font-normal pb-1">Weight</th>
+            <th className="font-normal pb-1">Body fat</th>
             <th className="pb-1"><span className="sr-only">Actions</span></th>
           </tr>
         </thead>
@@ -166,6 +178,7 @@ function WeightTable({ entries, unit }: { entries: BodyWeightEntry[]; unit: Weig
             <tr key={e.id} className="border-t border-zinc-800/80">
               <td className="py-1.5">{formatDate(e.measuredOn + 'T12:00:00', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
               <td className="py-1.5">{formatBodyWeight(unit, e.weightKg)}</td>
+              <td className="py-1.5 text-zinc-400">{e.bodyFatPct != null ? `${e.bodyFatPct}%` : '—'}</td>
               <td className="py-1.5 text-right">
                 <button
                   type="button"
