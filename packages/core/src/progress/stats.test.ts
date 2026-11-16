@@ -43,7 +43,7 @@ describe('dates', () => {
 })
 
 describe('bodyWeightTrend', () => {
-  const e = (measuredOn: string, weightKg: number) => ({ id: measuredOn, measuredOn, weightKg, note: null })
+  const e = (measuredOn: string, weightKg: number) => ({ id: measuredOn, measuredOn, weightKg, bodyFatPct: null, note: null })
   it('averages over a trailing 7-day window', () => {
     const trend = bodyWeightTrend([e('2026-01-01', 80), e('2026-01-03', 82), e('2026-01-07', 84), e('2026-01-08', 86)])
     expect(trend.map((p) => p.v)).toEqual([80, 81, 82, (82 + 84 + 86) / 3])

@@ -1,11 +1,23 @@
 export type WeightUnit = 'kg' | 'lb'
 export type EnergyUnit = 'kj' | 'kcal'
 
+/** Only used by the Mifflin-St Jeor resting energy equation. */
+export type Sex = 'male' | 'female'
+/** Everyday activity outside logged workouts. */
+export type DailyActivity = 'sitting' | 'mixed' | 'active'
+/** How hard a typical weights session is. */
+export type WorkoutEffort = 'moderate' | 'vigorous'
+
 export interface Profile {
   id: string
   displayName: string | null
   weightUnit: WeightUnit
   energyUnit: EnergyUnit
+  heightCm: number | null
+  birthYear: number | null
+  sex: Sex | null
+  dailyActivity: DailyActivity | null
+  workoutEffort: WorkoutEffort
 }
 
 export const MUSCLE_GROUPS = [
@@ -115,6 +127,8 @@ export interface BodyWeightEntry {
   /** Local calendar date, YYYY-MM-DD */
   measuredOn: string
   weightKg: number
+  /** Optional reading from the same weigh-in, e.g. a smart scale */
+  bodyFatPct: number | null
   note: string | null
 }
 

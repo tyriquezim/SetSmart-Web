@@ -6,6 +6,11 @@ interface ProfileRow {
   display_name: string | null
   weight_unit: Profile['weightUnit']
   energy_unit: Profile['energyUnit']
+  height_cm: number | string | null
+  birth_year: number | null
+  sex: Profile['sex']
+  daily_activity: Profile['dailyActivity']
+  workout_effort: Profile['workoutEffort']
 }
 
 const toProfile = (r: ProfileRow): Profile => ({
@@ -13,6 +18,11 @@ const toProfile = (r: ProfileRow): Profile => ({
   displayName: r.display_name,
   weightUnit: r.weight_unit,
   energyUnit: r.energy_unit,
+  heightCm: r.height_cm == null ? null : Number(r.height_cm),
+  birthYear: r.birth_year,
+  sex: r.sex,
+  dailyActivity: r.daily_activity,
+  workoutEffort: r.workout_effort ?? 'moderate',
 })
 
 export async function getProfile(db: Client, userId: string): Promise<Profile> {
@@ -29,6 +39,11 @@ export async function updateProfile(
   if (patch.displayName !== undefined) row.display_name = patch.displayName
   if (patch.weightUnit) row.weight_unit = patch.weightUnit
   if (patch.energyUnit) row.energy_unit = patch.energyUnit
+  if (patch.heightCm !== undefined) row.height_cm = patch.heightCm == null ? null : Math.round(patch.heightCm * 10) / 10
+  if (patch.birthYear !== undefined) row.birth_year = patch.birthYear
+  if (patch.sex !== undefined) row.sex = patch.sex
+  if (patch.dailyActivity !== undefined) row.daily_activity = patch.dailyActivity
+  if (patch.workoutEffort) row.workout_effort = patch.workoutEffort
   return toProfile(
     unwrap<ProfileRow>(await db.from('profiles').update(row).eq('id', userId).select('*').single()),
   )
