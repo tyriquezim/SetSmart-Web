@@ -87,3 +87,20 @@ export async function getWorkoutSession(db: Client, id: string): Promise<Workout
 export async function deleteWorkoutSession(db: Client, id: string): Promise<void> {
   unwrap(await db.from('workout_sessions').delete().eq('id', id))
 }
+
+/** Start and finish times of every workout that started in [fromIso, toIso). */
+export async function listWorkoutTimes(
+  db: Client,
+  fromIso: string,
+  toIso: string,
+): Promise<Array<{ id: string; startedAt: string; finishedAt: string }>> {
+  const rows = unwrap<Array<Pick<SessionRow, 'id' | 'started_at' | 'finished_at'>>>(
+    await db
+      .from('workout_sessions')
+      .select('id, started_at, finished_at')
+      .gte('started_at', fromIso)
+      .lt('started_at', toIso)
+      .order('started_at'),
+  )
+  return rows.map((r) => ({ id: r.id, startedAt: r.started_at, finishedAt: r.finished_at }))
+}

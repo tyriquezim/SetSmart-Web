@@ -1,4 +1,4 @@
-import { NO_TARGETS, sumNutrients, todayIsoDate } from '@setsmart/core'
+import { estimateDayEnergy, NO_TARGETS, sumNutrients, todayIsoDate } from '@setsmart/core'
 import { Link } from 'react-router'
 import { PlayIcon, PlusIcon, SettingsIcon } from '../components/icons'
 import { SessionCard } from '../components/SessionCard'
@@ -13,7 +13,9 @@ import {
   useRoutines,
   useWeightUnit,
   useWorkoutSessions,
+  useWorkoutTimes,
 } from '../hooks/data'
+import { formatEstimate } from '../lib/energy'
 import { energyLabel, energyNumber } from '../lib/nutrition'
 import { formatBodyWeight } from '../lib/progress'
 import { useNow } from '../hooks/useNow'
@@ -153,6 +155,13 @@ function TodayFoodCard() {
   const t = targets.data ?? NO_TARGETS
   const label = energyLabel(unit)
   const left = t.energyKj != null ? t.energyKj - totals.energyKj : null
+  const profile = useProfile()
+  const weights = useBodyWeights()
+  const workouts = useWorkoutTimes(today)
+  const burn =
+    profile.data && weights.data && workouts.data
+      ? estimateDayEnergy({ day: today, profile: profile.data, weights: weights.data, workouts: workouts.data })
+      : null
   return (
     <Link to="/food" className="block group">
       <Card className="p-5 group-hover:border-zinc-700 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
@@ -167,6 +176,7 @@ function TodayFoodCard() {
         </div>
         <div className="text-sm text-zinc-400 tabular-nums">
           P {Math.round(totals.proteinG)} g · C {Math.round(totals.carbsG)} g · F {Math.round(totals.fatG)} g
+          {burn?.ok && <p className="text-xs text-zinc-500 mt-0.5">Estimated burn today ≈ {formatEstimate(unit, burn.estimate.totalKcal)}</p>}
         </div>
         <p className="basis-full text-xs text-accent">
           {logs.data?.length === 0
