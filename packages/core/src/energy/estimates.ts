@@ -256,7 +256,19 @@ export function estimateDayEnergy({
   }
 }
 
-/** Estimated energy for a single workout in kcal, or null without enough body details. */
+export interface WorkoutEnergyEstimate {
+  kcal: number
+  /** Minutes counted (capped at MAX_WORKOUT_MINUTES) */
+  minutes: number
+  /** True when the logged length was longer than the cap */
+  capped: boolean
+  effort: WorkoutEffort
+  met: number
+  weightKg: number
+  resting: RestingEstimate
+}
+
+/** Estimated energy for a single workout (above resting), or null without enough body details. */
 export function estimateWorkoutEnergy({
   workout,
   profile,
@@ -265,16 +277,27 @@ export function estimateWorkoutEnergy({
   workout: WorkoutTimes
   profile: Pick<Profile, 'heightCm' | 'birthYear' | 'sex' | 'workoutEffort'>
   weights: BodyWeightEntry[]
-}): number | null {
+}): WorkoutEnergyEstimate | null {
   const stats = bodyStatsOn(todayIsoDate(new Date(workout.startedAt)), weights, profile)
   const resting = stats && restingEnergy(stats)
   if (!stats || !resting) return null
-  return workoutEnergy({
-    minutes: countedWorkoutMinutes(workout),
+  const minutes = countedWorkoutMinutes(workout)
+  const kcal = workoutEnergy({
+    minutes,
     effort: profile.workoutEffort,
     weightKg: stats.weightKg,
     restingKcalPerDay: resting.kcalPerDay,
   })
+  const logged = (Date.parse(workout.finishedAt) - Date.parse(workout.startedAt)) / 60_000
+  return {
+    kcal,
+    minutes,
+    capped: logged > MAX_WORKOUT_MINUTES,
+    effort: profile.workoutEffort,
+    met: WORKOUT_MET[profile.workoutEffort],
+    weightKg: stats.weightKg,
+    resting,
+  }
 }
 
 /** Round an estimate so it doesn't look more precise than it is: 10 kcal or 50 kJ steps. */

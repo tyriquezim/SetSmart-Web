@@ -101,12 +101,20 @@ describe('workouts', () => {
   })
 
   it('estimates a single workout from the body stats on its day', () => {
-    const kcal = estimateWorkoutEnergy({
+    const est = estimateWorkoutEnergy({
       workout: { startedAt: local(2026, 3, 2, 18), finishedAt: local(2026, 3, 2, 19) },
       profile: { heightCm: 180, birthYear: 1996, sex: 'male', workoutEffort: 'moderate' },
       weights: [w('2026-03-01', 80)],
     })
-    expect(kcal).toBeCloseTo((4.9 - 1780 / 1440) * 60)
+    expect(est?.kcal).toBeCloseTo((4.9 - 1780 / 1440) * 60)
+    expect(est).toMatchObject({ minutes: 60, capped: false, met: 3.5, weightKg: 80, effort: 'moderate' })
+    expect(est?.resting.method).toBe('mifflin')
+    const long = estimateWorkoutEnergy({
+      workout: { startedAt: local(2026, 3, 2, 8), finishedAt: local(2026, 3, 2, 13) },
+      profile: { heightCm: 180, birthYear: 1996, sex: 'male', workoutEffort: 'vigorous' },
+      weights: [w('2026-03-01', 80)],
+    })
+    expect(long).toMatchObject({ minutes: 180, capped: true, met: 6 })
     expect(
       estimateWorkoutEnergy({
         workout: { startedAt: local(2026, 3, 2, 18), finishedAt: local(2026, 3, 2, 19) },
