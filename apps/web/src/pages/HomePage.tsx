@@ -16,6 +16,7 @@ import {
   useWorkoutTimes,
 } from '../hooks/data'
 import { formatEstimate } from '../lib/energy'
+import { EstimateInfo, TotalInfoText } from '../components/energy/EstimateInfo'
 import { energyLabel, energyNumber } from '../lib/nutrition'
 import { formatBodyWeight } from '../lib/progress'
 import { useNow } from '../hooks/useNow'
@@ -163,10 +164,13 @@ function TodayFoodCard() {
       ? estimateDayEnergy({ day: today, profile: profile.data, weights: weights.data, workouts: workouts.data })
       : null
   return (
-    <Link to="/food" className="block group">
-      <Card className="p-5 group-hover:border-zinc-700 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+    // Stretched link: the whole card opens the Food page, while the estimate's info
+    // button sits above the link instead of inside it.
+    <Card className="relative p-5 hover:border-zinc-700 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
         <div>
-          <p className="text-xs uppercase tracking-widest text-zinc-500 font-semibold">Food today</p>
+          <Link to="/food" className="block text-xs uppercase tracking-widest text-zinc-500 font-semibold after:absolute after:inset-0 after:rounded-[inherit]">
+            Food today
+          </Link>
           <p className="text-3xl font-black tabular-nums mt-1">
             {energyNumber(unit, totals.energyKj)}{' '}
             <span className="text-base font-medium text-zinc-400">
@@ -176,7 +180,14 @@ function TodayFoodCard() {
         </div>
         <div className="text-sm text-zinc-400 tabular-nums">
           P {Math.round(totals.proteinG)} g · C {Math.round(totals.carbsG)} g · F {Math.round(totals.fatG)} g
-          {burn?.ok && <p className="text-xs text-zinc-500 mt-0.5">Estimated burn today ≈ {formatEstimate(unit, burn.estimate.totalKcal)}</p>}
+          {burn?.ok && (
+            <p className="text-xs text-zinc-500 mt-0.5">
+              Estimated burn today ≈ {formatEstimate(unit, burn.estimate.totalKcal)}{' '}
+              <EstimateInfo label="How today's burn is estimated" title="Estimated burn" unit={unit} estimate={burn.estimate}>
+                <TotalInfoText estimate={burn.estimate} unit={unit} />
+              </EstimateInfo>
+            </p>
+          )}
         </div>
         <p className="basis-full text-xs text-accent">
           {logs.data?.length === 0
@@ -187,7 +198,6 @@ function TodayFoodCard() {
                 : `${energyNumber(unit, -left)} ${label} over target · Add food →`
               : 'Add food →'}
         </p>
-      </Card>
-    </Link>
+    </Card>
   )
 }

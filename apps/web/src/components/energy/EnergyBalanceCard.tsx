@@ -1,11 +1,12 @@
 import { estimateDayEnergy, KJ_PER_KCAL, roundEstimate, type EnergyUnit, type WorkoutTimes } from '@setsmart/core'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { useBodyWeights, useProfile } from '../../hooks/data'
 import { describeMissing, formatEstimate } from '../../lib/energy'
 import { energyLabel, energyNumber } from '../../lib/nutrition'
 import { InfoIcon } from '../icons'
 import { Card } from '../ui'
+import { EstimateInfo, EverydayInfoText, RestingInfoText, TotalInfoText, WorkoutsDayInfoText } from './EstimateInfo'
 import { EstimatesInfoModal } from './EstimatesInfoModal'
 
 /** Uncertainty shown with the total: the resting equations are typically within about 10%. */
@@ -92,10 +93,36 @@ export function EnergyBalanceCard({
         ? `About ${formatEstimate(unit, -diff)} less than your estimated burn`
         : `About ${formatEstimate(unit, diff)} more than your estimated burn`
 
-  const rows: Array<{ name: string; kcal: number; note?: string }> = [
-    { name: 'Resting (BMR)', kcal: e.restingKcal },
-    { name: 'Everyday activity', kcal: e.everydayKcal, note: e.activityAssumed ? 'assumed mostly sitting' : undefined },
-    { name: 'Workouts', kcal: e.workoutKcal },
+  const p = profile.data!
+  const rows: Array<{ name: string; kcal: number; note?: string; info: ReactNode }> = [
+    {
+      name: 'Resting (BMR)',
+      kcal: e.restingKcal,
+      info: (
+        <EstimateInfo label="How resting energy is estimated" title="Resting energy (BMR)" unit={unit} estimate={e}>
+          <RestingInfoText resting={e.resting} stats={e.stats} unit={unit} />
+        </EstimateInfo>
+      ),
+    },
+    {
+      name: 'Everyday activity',
+      kcal: e.everydayKcal,
+      note: e.activityAssumed ? 'assumed mostly sitting' : undefined,
+      info: (
+        <EstimateInfo label="How everyday activity is estimated" title="Everyday activity" unit={unit} estimate={e}>
+          <EverydayInfoText estimate={e} activity={p.dailyActivity} unit={unit} />
+        </EstimateInfo>
+      ),
+    },
+    {
+      name: 'Workouts',
+      kcal: e.workoutKcal,
+      info: (
+        <EstimateInfo label="How workout energy is estimated" title="Workouts" unit={unit} estimate={e}>
+          <WorkoutsDayInfoText estimate={e} effort={p.workoutEffort} unit={unit} />
+        </EstimateInfo>
+      ),
+    },
   ]
 
   return (
@@ -111,7 +138,12 @@ export function EnergyBalanceCard({
           </dd>
         </div>
         <div>
-          <dt className="text-xs text-zinc-500">Burned (estimate)</dt>
+          <dt className="text-xs text-zinc-500">
+            Burned (estimate){' '}
+            <EstimateInfo label="How the total burn is estimated" title="Estimated burn" unit={unit} estimate={e}>
+              <TotalInfoText estimate={e} unit={unit} />
+            </EstimateInfo>
+          </dt>
           <dd className="text-2xl font-black tabular-nums">
             ≈ {roundEstimate(e.totalKcal, unit).toLocaleString()}
             <span className="text-sm font-medium text-zinc-400 ml-1">{label}</span>
@@ -133,7 +165,10 @@ export function EnergyBalanceCard({
                   </Link>
                 )}
               </th>
-              <td className="py-1.5 text-right text-zinc-300">≈ {formatEstimate(unit, r.kcal)}</td>
+              <td className="py-1.5 text-right text-zinc-300 whitespace-nowrap">
+                ≈ {formatEstimate(unit, r.kcal)}
+                <span className="ml-1.5">{r.info}</span>
+              </td>
             </tr>
           ))}
         </tbody>

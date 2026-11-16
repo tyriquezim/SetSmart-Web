@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { Button, Card, ConfirmModal, ErrorText, LoadingBlock, PageHeader } from '../components/ui'
 import { useDeleteWorkoutSession, useEnergyUnit, useWeightUnit, useWorkoutSession } from '../hooks/data'
+import { EstimateInfo, WorkoutInfoText } from '../components/energy/EstimateInfo'
 import { formatEstimate, useWorkoutEnergy } from '../lib/energy'
 import { formatDate, formatTime, minutesBetween } from '../lib/format'
 
@@ -14,7 +15,7 @@ export function SessionPage() {
   const del = useDeleteWorkoutSession()
   const [confirm, setConfirm] = useState(false)
   const energyUnit = useEnergyUnit()
-  const kcal = useWorkoutEnergy(session.data)
+  const estimate = useWorkoutEnergy(session.data)
 
   if (session.isPending) return <LoadingBlock />
   if (session.error) return <ErrorText error={session.error} />
@@ -52,10 +53,14 @@ export function SessionPage() {
         ))}
       </dl>
       <p className="text-xs text-zinc-500 -mt-2 mb-5">
-        {kcal != null ? (
+        {estimate != null ? (
           <>
-            Estimated energy burned: ≈ {formatEstimate(energyUnit, kcal)} above resting. This is an estimate from your body
-            details and the workout's length, not a measurement.
+            Estimated energy burned: ≈ {formatEstimate(energyUnit, estimate.kcal)} above resting{' '}
+            <EstimateInfo label="How this workout's energy is estimated" title="Workout energy" unit={energyUnit}>
+              <WorkoutInfoText workout={estimate} unit={energyUnit} />
+            </EstimateInfo>
+            <br />
+            This is an estimate from your body details and the workout's length, not a measurement.
           </>
         ) : (
           <>

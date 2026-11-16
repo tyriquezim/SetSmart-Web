@@ -1,4 +1,12 @@
-import { estimateWorkoutEnergy, roundEstimate, type EnergyUnit, type MissingDetail, type RestingMethod, type WorkoutTimes } from '@setsmart/core'
+import {
+  estimateWorkoutEnergy,
+  roundEstimate,
+  type EnergyUnit,
+  type MissingDetail,
+  type RestingMethod,
+  type WorkoutEnergyEstimate,
+  type WorkoutTimes,
+} from '@setsmart/core'
 import { useBodyWeights, useProfile } from '../hooks/data'
 import { energyLabel } from './nutrition'
 
@@ -25,8 +33,8 @@ export function describeMissing(missing: MissingDetail[]): string {
   return parts.length <= 1 ? (parts[0] ?? '') : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
 }
 
-/** Estimated kcal for one workout, or null while loading or without enough body details. */
-export function useWorkoutEnergy(workout: WorkoutTimes | undefined): number | null {
+/** Estimated energy for one workout, or null while loading or without enough body details. */
+export function useWorkoutEnergy(workout: WorkoutTimes | undefined): WorkoutEnergyEstimate | null {
   const profile = useProfile()
   const weights = useBodyWeights()
   if (!workout || !profile.data || !weights.data) return null
