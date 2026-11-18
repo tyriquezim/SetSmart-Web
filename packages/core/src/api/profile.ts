@@ -48,3 +48,11 @@ export async function updateProfile(
     unwrap<ProfileRow>(await db.from('profiles').update(row).eq('id', userId).select('*').single()),
   )
 }
+
+/**
+ * Permanently delete the signed-in user's account and every row they own.
+ * Can't be undone. Sign out locally afterwards: the session is no longer valid.
+ */
+export async function deleteMyAccount(db: Client): Promise<void> {
+  unwrap(await db.rpc('delete_my_account'))
+}
