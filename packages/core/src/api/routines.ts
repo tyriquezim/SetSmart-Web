@@ -19,6 +19,7 @@ interface RoutineExerciseRow {
   position: number
   rest_seconds: number
   sets: SetJson[]
+  target_duration_s: number | null
   notes: string | null
   exercise: ExerciseRow
 }
@@ -47,7 +48,7 @@ export async function getRoutine(db: Client, id: string): Promise<Routine> {
     await db
       .from('routines')
       .select(
-        'id, name, notes, updated_at, routine_exercises(exercise_id, position, rest_seconds, sets, notes, exercise:exercises(*))',
+        'id, name, notes, updated_at, routine_exercises(exercise_id, position, rest_seconds, sets, target_duration_s, notes, exercise:exercises(*))',
       )
       .eq('id', id)
       .order('position', { referencedTable: 'routine_exercises' })
@@ -63,6 +64,7 @@ export async function getRoutine(db: Client, id: string): Promise<Routine> {
       exercise: toExercise(re.exercise),
       restSeconds: re.rest_seconds,
       sets: re.sets.map(toSet),
+      targetDurationS: re.target_duration_s ?? null,
       notes: re.notes,
     })),
   }
@@ -79,6 +81,7 @@ export async function saveRoutine(db: Client, input: RoutineInput): Promise<stri
         exercise_id: e.exerciseId,
         rest_seconds: e.restSeconds,
         sets: e.sets.map(fromSet),
+        target_duration_s: e.targetDurationS,
         notes: e.notes,
       })),
     }),

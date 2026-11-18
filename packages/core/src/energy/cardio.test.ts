@@ -1,22 +1,19 @@
 import { describe, expect, it } from 'vitest'
-import type { BodyWeightEntry, CardioSession } from '../types'
-import { averageSpeedKmh, cardioMet, cardioName, CARDIO_ACTIVITIES, CARDIO_ACTIVITY_ORDER } from './cardio'
-import { estimateCardioEnergy, estimateDayEnergy, netActivityKcal } from './estimates'
+import type { BodyWeightEntry, CardioMetInput } from '../types'
+import { averageSpeedKmh, cardioMet, CARDIO_ACTIVITIES, CARDIO_ACTIVITY_ORDER } from './cardio'
+import { countedWorkoutMinutes, estimateCardioEnergy, estimateDayEnergy, estimateWorkoutEnergy, netActivityKcal } from './estimates'
 
 const local = (y: number, mo: number, d: number, h: number, mi = 0) => new Date(y, mo - 1, d, h, mi).toISOString()
 
-const session = (over: Partial<CardioSession>): CardioSession => ({
-  id: 'c1',
+const session = (over: Partial<CardioMetInput>): CardioMetInput => ({
   activity: 'run',
-  customName: null,
-  startedAt: local(2026, 11, 18, 7),
   durationS: 50 * 60,
   distanceM: null,
   effort: null,
   met: null,
-  notes: null,
   ...over,
 })
+const START = local(2026, 11, 18, 7)
 
 const weights: BodyWeightEntry[] = [{ id: 'w', measuredOn: '2026-11-01', weightKg: 80, bodyFatPct: null, note: null }]
 // Mifflin, male, 80 kg, 180 cm, 30 years in 2026 -> 1780 kcal/day
@@ -70,12 +67,6 @@ describe('cardio helpers', () => {
     expect(averageSpeedKmh({ durationS: 1800, distanceM: null })).toBeNull()
   })
 
-  it('names sessions', () => {
-    expect(cardioName({ activity: 'indoor_cycle', customName: null })).toBe('Exercise bike')
-    expect(cardioName({ activity: 'other', customName: ' Kayaking ' })).toBe('Kayaking')
-    expect(cardioName({ activity: 'other', customName: '' })).toBe('Other')
-  })
-
   it('lists every activity once, each with at least one way to get a MET', () => {
     expect(new Set(CARDIO_ACTIVITY_ORDER).size).toBe(Object.keys(CARDIO_ACTIVITIES).length)
     for (const a of CARDIO_ACTIVITY_ORDER.filter((a) => a !== 'other')) expect(CARDIO_ACTIVITIES[a].efforts.length).toBeGreaterThan(0)
@@ -85,17 +76,17 @@ describe('cardio helpers', () => {
 describe('estimateCardioEnergy', () => {
   it('counts only energy above resting', () => {
     // (11.8 x 3.5 x 80 / 200 - 1780 / 1440) x 50 = (16.52 - 1.2361) x 50 = 764.19
-    const r = estimateCardioEnergy({ session: session({ distanceM: 10_000 }), profile, weights })
+    const r = estimateCardioEnergy({ cardio: session({ distanceM: 10_000 }), startedAt: START, profile, weights })
     expect(r.ok && r.estimate.kcal).toBeCloseTo(764.19, 1)
     expect(r.ok && r.estimate.minutes).toBe(50)
   })
 
   it('reports what is missing', () => {
-    expect(estimateCardioEnergy({ session: session({}), profile, weights: [] })).toEqual({
+    expect(estimateCardioEnergy({ cardio: session({}), startedAt: START, profile, weights: [] })).toEqual({
       ok: false,
       missing: ['weight'],
     })
-    expect(estimateCardioEnergy({ session: session({ activity: 'other' }), profile, weights })).toEqual({
+    expect(estimateCardioEnergy({ cardio: session({ activity: 'other' }), startedAt: START, profile, weights })).toEqual({
       ok: false,
       missing: ['met'],
     })
@@ -106,14 +97,48 @@ describe('estimateCardioEnergy', () => {
   })
 })
 
-describe('estimateDayEnergy with cardio', () => {
-  it('adds cardio on that local day only', () => {
-    const today = session({ distanceM: 10_000 })
-    const yesterday = session({ id: 'c2', startedAt: local(2026, 11, 17, 7), distanceM: 10_000 })
-    const r = estimateDayEnergy({ day: '2026-11-18', profile, weights, workouts: [], cardio: [today, yesterday] })
+describe('cardio inside workouts', () => {
+  // A 75-minute workout with 50 minutes of 12 km/h running and some weights sets
+  const mixed = {
+    startedAt: local(2026, 11, 18, 7),
+    finishedAt: local(2026, 11, 18, 8, 15),
+    setCount: 9,
+    cardio: [session({ distanceM: 10_000 })],
+  }
+
+  it('counts only the time outside cardio as weight training', () => {
+    expect(countedWorkoutMinutes(mixed)).toBe(25)
+    // Older callers without cardio still get the whole length
+    expect(countedWorkoutMinutes({ startedAt: mixed.startedAt, finishedAt: mixed.finishedAt })).toBe(75)
+  })
+
+  it('counts no weight training in a cardio-only workout', () => {
+    expect(countedWorkoutMinutes({ ...mixed, setCount: 0 })).toBe(0)
+  })
+
+  it('adds weights and cardio for one workout', () => {
+    const r = estimateWorkoutEnergy({ workout: mixed, profile, weights })!
+    // weights: (3.5 x 3.5 x 80 / 200 - 1.2361) x 25 = (4.9 - 1.2361) x 25 = 91.60
+    expect(r.weightsKcal).toBeCloseTo(91.6, 1)
+    expect(r.cardioKcal).toBeCloseTo(764.19, 1)
+    expect(r.kcal).toBeCloseTo(91.6 + 764.19, 1)
+    expect(r.cardio).toHaveLength(1)
+    expect(r.minutes).toBe(25)
+  })
+
+  it('skips cardio it has no MET for', () => {
+    const r = estimateWorkoutEnergy({ workout: { ...mixed, setCount: 0, cardio: [session({ activity: 'other' })] }, profile, weights })!
+    expect(r.cardio).toEqual([null])
+    expect(r.kcal).toBe(0)
+  })
+
+  it('adds cardio to the day the workout started on', () => {
+    const yesterday = { ...mixed, startedAt: local(2026, 11, 17, 7), finishedAt: local(2026, 11, 17, 8, 15) }
+    const r = estimateDayEnergy({ day: '2026-11-18', profile, weights, workouts: [mixed, yesterday] })
     expect(r.ok && r.estimate.cardioKcal).toBeCloseTo(764.19, 1)
-    // 1780 resting + 712 everyday (1.4) + 764.19 cardio
-    expect(r.ok && r.estimate.totalKcal).toBeCloseTo(1780 + 712 + 764.19, 1)
+    expect(r.ok && r.estimate.workoutKcal).toBeCloseTo(91.6, 1)
+    // 1780 resting + 712 everyday (1.4) + 91.6 weights + 764.19 cardio
+    expect(r.ok && r.estimate.totalKcal).toBeCloseTo(1780 + 712 + 91.6 + 764.19, 1)
   })
 
   it('treats cardio as optional', () => {

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   canPostpone,
+  cardioElapsedMs,
   createWorkout,
+  currentExercise,
   currentSet,
   restRemainingMs,
   toLogPayload,
@@ -143,7 +145,7 @@ describe('workout engine', () => {
     expect(s.phase.kind).toBe('complete')
     expect(s.finishedAt).toBe(new Date(end).toISOString())
     expect(s.performedOrder).toEqual([1, 0, 2])
-    expect(workoutTotals(s)).toEqual({ setsLogged: 5, setsPlanned: 5, volumeKg: 400 + 960, exercisesDone: 3 })
+    expect(workoutTotals(s)).toMatchObject({ setsLogged: 5, setsPlanned: 5, volumeKg: 400 + 960, exercisesDone: 3 })
 
     const payload = toLogPayload(s)
     expect(payload.sets.map((x) => [x.exercise_id, x.exercise_position, x.set_number])).toEqual([
@@ -215,5 +217,105 @@ describe('history and PRs', () => {
   it('ignores rounding noise from stored weights', () => {
     const s = run(withHistory(), log(1, 57.5 + 0.004))
     expect(workoutPRs(s)).toEqual([])
+  })
+})
+
+describe('cardio exercises', () => {
+  // Bench (1 set, 60 s rest), then a treadmill run with a 20-minute goal, then dips
+  function mixed(): WorkoutState {
+    return createWorkout({
+      id: 'w2',
+      routineId: 'r2',
+      name: 'Push and run',
+      now: T0,
+      exercises: [
+        { exerciseId: 'bench', name: 'Bench', restSeconds: 60, sets: [{ reps: 8, weightKg: 60 }] },
+        { exerciseId: 'tread', name: 'Treadmill Run', restSeconds: 0, sets: [], cardio: { activity: 'run', met: null, targetDurationS: 1200 } },
+        { exerciseId: 'dips', name: 'Dips', restSeconds: 0, sets: [{ reps: 12, weightKg: null }] },
+      ],
+    })
+  }
+  const MIN = 60_000
+
+  it('keeps cardio exercises even though they have no sets', () => {
+    const s = mixed()
+    expect(s.exercises.map((e) => e.exerciseId)).toEqual(['bench', 'tread', 'dips'])
+    expect(s.exercises[1].cardioLog).toBeNull()
+  })
+
+  it('times cardio, excluding pauses, and logs it with the timed duration', () => {
+    let s = run(mixed(), log(8, 60, T0), { type: 'endRest' })
+    expect(currentSet(s)).toBeNull()
+    expect(currentExercise(s)!.exercise.name).toBe('Treadmill Run')
+    // Sets can't be logged against cardio
+    expect(run(s, log(5, 5))).toBe(s)
+
+    const start = T0 + 2 * MIN
+    s = run(s, { type: 'startCardio', now: start })
+    expect(s.phase).toMatchObject({ kind: 'cardio', exerciseIndex: 1, runningSince: start, endedAt: null })
+    expect(canPostpone(s)).toBe(false)
+    expect(cardioElapsedMs(s, start + 5 * MIN)).toBe(5 * MIN)
+
+    s = run(s, { type: 'pauseCardio', now: start + 5 * MIN })
+    expect(cardioElapsedMs(s, start + 9 * MIN)).toBe(5 * MIN)
+    s = run(s, { type: 'resumeCardio', now: start + 7 * MIN }, { type: 'endCardio', now: start + 25 * MIN })
+    expect(s.phase).toMatchObject({ kind: 'cardio', accumulatedMs: 23 * MIN, runningSince: null, endedAt: start + 25 * MIN })
+
+    s = run(s, { type: 'logCardio', durationS: 23 * 60, distanceM: 4000, effort: null, now: start + 26 * MIN })
+    expect(s.phase).toEqual({ kind: 'set' })
+    expect(s.exercises[1]).toMatchObject({
+      status: 'done',
+      cardioLog: { startedAt: new Date(start).toISOString(), durationS: 1380, distanceM: 4000, effort: null },
+    })
+    expect(currentSet(s)!.exercise.name).toBe('Dips')
+    expect(workoutTotals(s)).toMatchObject({ cardioLogged: 1, cardioPlanned: 1, cardioSeconds: 1380, setsPlanned: 2 })
+
+    s = run(s, log(12, null, start + 30 * MIN))
+    expect(s.phase.kind).toBe('complete')
+    const payload = toLogPayload(s)
+    expect(payload.sets.map((x) => [x.exercise_id, x.exercise_position])).toEqual([
+      ['bench', 0],
+      ['dips', 2],
+    ])
+    expect(payload.cardio).toEqual([
+      {
+        exercise_id: 'tread',
+        exercise_position: 1,
+        target_duration_s: 1200,
+        started_at: new Date(start).toISOString(),
+        duration_s: 1380,
+        distance_m: 4000,
+        effort: null,
+      },
+    ])
+  })
+
+  it("can't log cardio before the timer is ended", () => {
+    let s = run(mixed(), log(8, 60), { type: 'endRest' }, { type: 'startCardio', now: T0 })
+    expect(run(s, { type: 'logCardio', durationS: 60, distanceM: null, effort: null, now: T0 })).toBe(s)
+    // Resuming after an accidental end keeps going without counting the gap
+    s = run(s, { type: 'endCardio', now: T0 + MIN }, { type: 'resumeCardio', now: T0 + 3 * MIN })
+    expect(s.phase).toMatchObject({ endedAt: null, accumulatedMs: MIN, runningSince: T0 + 3 * MIN })
+  })
+
+  it('only starts the timer on a cardio exercise', () => {
+    const s = mixed()
+    expect(run(s, { type: 'startCardio', now: T0 })).toBe(s)
+  })
+
+  it('cancelling or skipping discards the timer', () => {
+    const timing = run(mixed(), log(8, 60), { type: 'endRest' }, { type: 'startCardio', now: T0 })
+    expect(run(timing, { type: 'cancelCardio' }).phase).toEqual({ kind: 'set' })
+    const skipped = run(timing, { type: 'skipExercise', now: T0 })
+    expect(skipped.phase).toEqual({ kind: 'set' })
+    expect(skipped.exercises[1].status).toBe('skipped')
+    expect(currentSet(skipped)!.exercise.name).toBe('Dips')
+    expect(toLogPayload(skipped).cardio).toEqual([])
+  })
+
+  it('treats workouts saved before cardio existed as weights only', () => {
+    const s = make()
+    expect(toLogPayload(s).cardio).toEqual([])
+    expect(workoutTotals(s)).toMatchObject({ cardioPlanned: 0, cardioLogged: 0 })
   })
 })
