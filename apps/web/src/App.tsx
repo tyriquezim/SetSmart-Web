@@ -4,8 +4,6 @@ import { Layout } from './components/Layout'
 import { isSupabaseConfigured } from './lib/supabase'
 import { AddFoodPage } from './pages/AddFoodPage'
 import { AuthPage } from './pages/AuthPage'
-import { CardioFormPage } from './pages/CardioFormPage'
-import { CardioPage } from './pages/CardioPage'
 import { ExerciseProgressPage } from './pages/ExerciseProgressPage'
 import { ExercisesPage } from './pages/ExercisesPage'
 import { FoodPage } from './pages/FoodPage'
@@ -50,9 +48,6 @@ export function App() {
               <Route path="progress/exercises/:id" element={<ExerciseProgressPage />} />
               <Route path="history" element={<HistoryPage />} />
               <Route path="history/:id" element={<SessionPage />} />
-              <Route path="history/cardio/new" element={<CardioFormPage />} />
-              <Route path="history/cardio/:id" element={<CardioPage />} />
-              <Route path="history/cardio/:id/edit" element={<CardioFormPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="workout" element={<WorkoutPage />} />
             </Route>

@@ -68,7 +68,7 @@ export function DeleteAccountCard() {
         <form onSubmit={onSubmit} className="space-y-4 text-sm">
           <p className="text-zinc-300">This permanently deletes:</p>
           <ul className="list-disc pl-5 text-zinc-400 space-y-0.5">
-            <li>your workouts, cardio sessions and routines</li>
+            <li>your workouts (weights and cardio) and routines</li>
             <li>your custom exercises and foods</li>
             <li>your food log, targets and weigh-ins</li>
             <li>your profile, body details and login</li>

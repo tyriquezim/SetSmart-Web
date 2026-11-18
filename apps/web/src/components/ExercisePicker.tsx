@@ -1,4 +1,4 @@
-import type { Exercise } from '@setsmart/core'
+import type { Exercise, ExerciseKind } from '@setsmart/core'
 import { useState } from 'react'
 import { useExercises } from '../hooks/data'
 import { ExerciseFormModal } from './ExerciseFormModal'
@@ -17,7 +17,7 @@ export function ExercisePicker({
 }) {
   const exercises = useExercises()
   const [selected, setSelected] = useState<Exercise[]>([])
-  const [creating, setCreating] = useState<string | null>(null)
+  const [creating, setCreating] = useState<{ name: string; kind: ExerciseKind } | null>(null)
 
   const toggle = (e: Exercise) =>
     setSelected((s) => (s.some((x) => x.id === e.id) ? s.filter((x) => x.id !== e.id) : [...s, e]))
@@ -50,9 +50,9 @@ export function ExercisePicker({
             exercises={exercises.data}
             onSelect={toggle}
             isSelected={(e) => selected.some((x) => x.id === e.id)}
-            footer={(query) => (
-              <Button variant="ghost" className="w-full" onClick={() => setCreating(query)}>
-                + Create {query.trim() ? `“${query.trim()}”` : 'a custom exercise'}
+            footer={(query, kind) => (
+              <Button variant="ghost" className="w-full" onClick={() => setCreating({ name: query, kind })}>
+                + Create {query.trim() ? `“${query.trim()}”` : kind === 'cardio' ? 'a custom cardio exercise' : 'a custom exercise'}
               </Button>
             )}
           />
@@ -61,7 +61,8 @@ export function ExercisePicker({
       {creating != null && (
         <ExerciseFormModal
           open
-          initialName={creating}
+          initialName={creating.name}
+          initialKind={creating.kind}
           onClose={() => setCreating(null)}
           onSaved={(e) => setSelected((s) => [...s, e])}
         />

@@ -105,9 +105,9 @@ export function EstimatesInfoModal({
           <p>This is the least certain part. People's everyday movement varies a lot, even with similar jobs.</p>
         </Section>
 
-        <Section title="Workouts">
+        <Section title="Weight training">
           <p>
-            Each logged workout uses the MET value for weight training from the 2024 Adult Compendium of Physical
+            The weight training in each logged workout uses the MET value for weight training from the 2024 Adult Compendium of Physical
             Activities: {WORKOUT_MET.moderate} METs for moderate sessions (multiple exercises, 8–15 reps) or {WORKOUT_MET.vigorous} for
             vigorous ones (powerlifting or bodybuilding style). These values allow for rest between sets.
             <Cite ids={['compendium']} />
@@ -116,21 +116,23 @@ export function EstimatesInfoModal({
             kcal = (MET × 3.5 × weight (kg) ÷ 200 − resting kcal per minute) × minutes
           </Formula>
           <p>
-            Resting energy is subtracted because it's already counted in the daily total. Sessions are counted for at most{' '}
-            {MAX_WORKOUT_MINUTES / 60} hours, in case a workout was left running. Weight training burns less than it feels like it
-            does, and how hard you work changes it a lot.
+            The minutes are the workout's length minus any timed cardio; a workout that was only cardio counts none.
+            Resting energy is subtracted because it's already counted in the daily total. Weight training is counted for
+            at most {MAX_WORKOUT_MINUTES / 60} hours, in case a workout was left running. Weight training burns less than it
+            feels like it does, and how hard you work changes it a lot.
           </p>
         </Section>
 
         <Section title="Cardio">
           <p>
-            Each cardio session also uses a MET value from the 2024 Compendium, with the same formula as workouts.
+            Each cardio exercise in a workout also uses a MET value from the 2024 Compendium, with the same formula,
+            for the time on its timer.
             <Cite ids={['compendium']} />
           </p>
           <ul className="list-disc pl-5">
             <li>
-              <strong className="text-zinc-300">Runs, walks and outdoor rides with a distance:</strong> your average
-              speed (distance ÷ time) picks the Compendium row for the closest speed. For example, running at 12 km/h
+              <strong className="text-zinc-300">Runs, walks and outdoor rides with a distance or pace:</strong> your
+              average speed picks the Compendium row for the closest speed. For example, running at 12 km/h
               (7.5 mph) is 11.8 METs.
             </li>
             <li>
@@ -138,8 +140,8 @@ export function EstimatesInfoModal({
               "elliptical trainer, vigorous effort" (9 METs).
             </li>
             <li>
-              <strong className="text-zinc-300">Other activities:</strong> you can look up a MET value in the Compendium
-              and enter it.
+              <strong className="text-zinc-300">Your own cardio exercises:</strong> they count as one of the activities
+              above, or you can look up a MET value in the Compendium and enter it.
             </li>
           </ul>
           <p>

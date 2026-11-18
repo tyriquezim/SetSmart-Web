@@ -69,3 +69,17 @@ export function restOverAlert(nextUp: string): void {
     }
   }
 }
+
+/** A cardio exercise reached its goal duration. The timer keeps running; this is only a heads-up. */
+export function cardioGoalAlert(label: string): void {
+  const prefs = loadDevicePrefs()
+  if (prefs.sound) playAlarm()
+  if (prefs.vibrate) navigator.vibrate?.([300, 150, 300, 150, 300])
+  if (document.visibilityState === 'hidden' && 'Notification' in window && Notification.permission === 'granted') {
+    try {
+      new Notification('Goal reached!', { body: label, tag: 'setsmart-cardio-goal', requireInteraction: false })
+    } catch {
+      // Some mobile browsers only allow notifications via a service worker.
+    }
+  }
+}
