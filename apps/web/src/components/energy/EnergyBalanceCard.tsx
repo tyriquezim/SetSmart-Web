@@ -1,4 +1,4 @@
-import { estimateDayEnergy, KJ_PER_KCAL, roundEstimate, type EnergyUnit, type WorkoutTimes } from '@setsmart/core'
+import { estimateDayEnergy, KJ_PER_KCAL, roundEstimate, type CardioSession, type EnergyUnit, type WorkoutTimes } from '@setsmart/core'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { useBodyWeights, useProfile } from '../../hooks/data'
@@ -6,7 +6,7 @@ import { describeMissing, formatEstimate } from '../../lib/energy'
 import { energyLabel, energyNumber } from '../../lib/nutrition'
 import { InfoIcon } from '../icons'
 import { Card } from '../ui'
-import { EstimateInfo, EverydayInfoText, RestingInfoText, TotalInfoText, WorkoutsDayInfoText } from './EstimateInfo'
+import { CardioDayInfoText, EstimateInfo, EverydayInfoText, RestingInfoText, TotalInfoText, WorkoutsDayInfoText } from './EstimateInfo'
 import { EstimatesInfoModal } from './EstimatesInfoModal'
 
 /** Uncertainty shown with the total: the resting equations are typically within about 10%. */
@@ -21,12 +21,14 @@ export function EnergyBalanceCard({
   today,
   eatenKj,
   workouts,
+  cardio,
   unit,
 }: {
   day: string
   today: string
   eatenKj: number
   workouts: WorkoutTimes[]
+  cardio: CardioSession[]
   unit: EnergyUnit
 }) {
   const profile = useProfile()
@@ -36,9 +38,9 @@ export function EnergyBalanceCard({
   const result = useMemo(
     () =>
       profile.data && weights.data
-        ? estimateDayEnergy({ day, profile: profile.data, weights: weights.data, workouts })
+        ? estimateDayEnergy({ day, profile: profile.data, weights: weights.data, workouts, cardio })
         : null,
-    [day, profile.data, weights.data, workouts],
+    [day, profile.data, weights.data, workouts, cardio],
   )
   if (!result) return null
 
@@ -120,6 +122,15 @@ export function EnergyBalanceCard({
       info: (
         <EstimateInfo label="How workout energy is estimated" title="Workouts" unit={unit} estimate={e}>
           <WorkoutsDayInfoText estimate={e} effort={p.workoutEffort} unit={unit} />
+        </EstimateInfo>
+      ),
+    },
+    {
+      name: 'Cardio',
+      kcal: e.cardioKcal,
+      info: (
+        <EstimateInfo label="How cardio energy is estimated" title="Cardio" unit={unit} estimate={e}>
+          <CardioDayInfoText estimate={e} unit={unit} />
         </EstimateInfo>
       ),
     },

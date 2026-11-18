@@ -7,12 +7,14 @@ import {
   type EnergyUnit,
   type RestingEstimate,
   type BodyStats,
+  type CardioEnergyEstimate,
   type WorkoutEnergyEstimate,
   type WorkoutEffort,
 } from '@setsmart/core'
 import { useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router'
+import { formatSpeed, type DistanceUnit } from '../../lib/cardio'
 import { formatEstimate } from '../../lib/energy'
 import { InfoIcon } from '../icons'
 import { Modal } from '../ui'
@@ -219,9 +221,10 @@ export function WorkoutsDayInfoText({
 export function TotalInfoText({ estimate, unit }: { estimate: DayEnergyEstimate; unit: EnergyUnit }) {
   return (
     <>
-      <p>Your estimated burn for the whole day is three estimates added together.</p>
+      <p>Your estimated burn for the whole day is four estimates added together.</p>
       <Formula>
-        resting {n(estimate.restingKcal)} + everyday {n(estimate.everydayKcal)} + workouts {n(estimate.workoutKcal)}
+        resting {n(estimate.restingKcal)} + everyday {n(estimate.everydayKcal)} + workouts {n(estimate.workoutKcal)} +
+        cardio {n(estimate.cardioKcal)}
         <br />= {n(estimate.totalKcal)} kcal
       </Formula>
       <p>
@@ -250,6 +253,67 @@ export function WorkoutInfoText({ workout, unit }: { workout: WorkoutEnergyEstim
         This workout: <Kcal kcal={workout.kcal} unit={unit} /> above resting.
         {workout.capped &&
           ` It ran longer than ${MAX_WORKOUT_MINUTES / 60} hours, so only ${MAX_WORKOUT_MINUTES / 60} hours are counted.`}
+      </p>
+    </>
+  )
+}
+
+export function CardioDayInfoText({ estimate, unit }: { estimate: DayEnergyEstimate; unit: EnergyUnit }) {
+  return (
+    <>
+      <p>
+        Each cardio session logged on this day gets a MET value from the 2024 Compendium of Physical Activities. For
+        runs, walks and outdoor rides with a distance, the value comes from your average speed. Otherwise it comes from
+        the effort you chose. Only the energy above resting counts.
+      </p>
+      <Formula>(MET × 3.5 × kg ÷ 200 − resting kcal per min) × minutes</Formula>
+      <p>
+        Cardio: <Kcal kcal={estimate.cardioKcal} unit={unit} />. Tap a session in{' '}
+        <Link to="/history" className="text-accent">
+          History
+        </Link>{' '}
+        to see how its estimate was worked out.
+      </p>
+    </>
+  )
+}
+
+/** Why a cardio session got its MET value, then the sum. */
+export function CardioInfoText({
+  cardio,
+  unit,
+  distanceUnit,
+}: {
+  cardio: CardioEnergyEstimate
+  unit: EnergyUnit
+  distanceUnit: DistanceUnit
+}) {
+  const gross = cardio.met * (3.5 / 200) * cardio.weightKg
+  const rest = cardio.resting.kcalPerDay / 1440
+  const src = cardio.source
+  return (
+    <>
+      {src.kind === 'speed' && (
+        <p>
+          Your average speed was {formatSpeed(src.speedKmh, distanceUnit)}. The closest row in the 2024 Compendium of
+          Physical Activities is “{src.row.description}” (code {src.row.code}), which is {cardio.met} METs.
+        </p>
+      )}
+      {src.kind === 'effort' && (
+        <p>
+          {src.defaulted ? 'No effort was chosen, so the middle option is used: ' : `You chose “${src.row.label}”, which matches `}
+          “{src.row.description}” in the 2024 Compendium of Physical Activities (code {src.row.code}), which is{' '}
+          {cardio.met} METs.
+        </p>
+      )}
+      {src.kind === 'custom' && <p>You entered {cardio.met} METs for this activity.</p>}
+      <Formula>
+        ({cardio.met} × 3.5 × {n(cardio.weightKg, 1)} ÷ 200 − {n(rest, 2)} resting) × {n(cardio.minutes, 1)} min
+        <br />= ({n(gross, 2)} − {n(rest, 2)}) × {n(cardio.minutes, 1)} = {n(cardio.kcal)} kcal
+      </Formula>
+      <p>
+        This session: <Kcal kcal={cardio.kcal} unit={unit} /> above resting. Hills, wind, heat and your fitness change
+        the real number, and they aren't counted.
       </p>
     </>
   )

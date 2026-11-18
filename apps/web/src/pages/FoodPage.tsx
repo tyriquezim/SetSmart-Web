@@ -19,10 +19,11 @@ import { NutritionSummary } from '../components/nutrition/NutritionSummary'
 import { TargetsModal } from '../components/nutrition/TargetsModal'
 import { WeekEnergyChart } from '../components/nutrition/WeekEnergyChart'
 import { Button, Card, ErrorText, LoadingBlock, PageHeader } from '../components/ui'
-import { useCopyFoodLogs, useEnergyUnit, useFoodLogs, useNutritionTargets, useWorkoutTimes } from '../hooks/data'
+import { useCardioBetween, useCopyFoodLogs, useEnergyUnit, useFoodLogs, useNutritionTargets, useWorkoutTimes } from '../hooks/data'
 import { dayLabel, energyLabel, energyNumber, isIsoDate } from '../lib/nutrition'
 
 const NO_WORKOUTS: [] = []
+const NO_CARDIO: [] = []
 
 export function FoodPage() {
   const [params, setParams] = useSearchParams()
@@ -36,6 +37,7 @@ export function FoodPage() {
   // One query covers the selected day, the day before (for copying) and the week chart.
   const week = useFoodLogs(addDays(day, -6), day)
   const workouts = useWorkoutTimes(day)
+  const cardio = useCardioBetween(day)
   const [editing, setEditing] = useState<FoodLogEntry | null>(null)
   const [targetsOpen, setTargetsOpen] = useState(false)
 
@@ -90,6 +92,7 @@ export function FoodPage() {
             today={today}
             eatenKj={sumNutrients(dayEntries).energyKj}
             workouts={workouts.data ?? NO_WORKOUTS}
+            cardio={cardio.data ?? NO_CARDIO}
             unit={unit}
           />
 

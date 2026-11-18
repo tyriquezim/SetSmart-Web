@@ -1,5 +1,8 @@
 import {
+  estimateCardioEnergy,
   estimateWorkoutEnergy,
+  type CardioEnergyResult,
+  type CardioSession,
   roundEstimate,
   type EnergyUnit,
   type MissingDetail,
@@ -39,4 +42,14 @@ export function useWorkoutEnergy(workout: WorkoutTimes | undefined): WorkoutEner
   const weights = useBodyWeights()
   if (!workout || !profile.data || !weights.data) return null
   return estimateWorkoutEnergy({ workout, profile: profile.data, weights: weights.data })
+}
+
+/** Estimated energy for one cardio session, or null while loading. */
+export function useCardioEnergy(
+  session: Pick<CardioSession, 'activity' | 'startedAt' | 'durationS' | 'distanceM' | 'effort' | 'met'> | undefined,
+): CardioEnergyResult | null {
+  const profile = useProfile()
+  const weights = useBodyWeights()
+  if (!session || !profile.data || !weights.data) return null
+  return estimateCardioEnergy({ session, profile: profile.data, weights: weights.data })
 }

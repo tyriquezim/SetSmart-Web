@@ -122,6 +122,32 @@ export function EstimatesInfoModal({
           </p>
         </Section>
 
+        <Section title="Cardio">
+          <p>
+            Each cardio session also uses a MET value from the 2024 Compendium, with the same formula as workouts.
+            <Cite ids={['compendium']} />
+          </p>
+          <ul className="list-disc pl-5">
+            <li>
+              <strong className="text-zinc-300">Runs, walks and outdoor rides with a distance:</strong> your average
+              speed (distance ÷ time) picks the Compendium row for the closest speed. For example, running at 12 km/h
+              (7.5 mph) is 11.8 METs.
+            </li>
+            <li>
+              <strong className="text-zinc-300">Everything else:</strong> the effort you choose picks a row, such as
+              "elliptical trainer, vigorous effort" (9 METs).
+            </li>
+            <li>
+              <strong className="text-zinc-300">Other activities:</strong> you can look up a MET value in the Compendium
+              and enter it.
+            </li>
+          </ul>
+          <p>
+            The speed rows are for flat ground, so hills, wind and heat aren't counted. Fitter people use a bit less
+            energy at the same speed.
+          </p>
+        </Section>
+
         <Section title="Who these don't suit">
           <p>
             The equations were developed in healthy adults. They're less reliable if you're under 18, pregnant or
