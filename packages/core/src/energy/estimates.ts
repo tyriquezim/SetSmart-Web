@@ -9,7 +9,7 @@
 
 import { KJ_PER_KCAL } from '../units'
 import { todayIsoDate } from '../progress/stats'
-import type { BodyWeightEntry, CardioSession, DailyActivity, Profile, Sex, WorkoutEffort } from '../types'
+import type { BodyWeightEntry, CardioMetInput, DailyActivity, Profile, Sex, WorkoutEffort } from '../types'
 import { cardioMet, type CardioMet } from './cardio'
 
 // ---- Constants from the literature -------------------------------------------
@@ -160,12 +160,26 @@ export function bodyStatsOn(
 export interface WorkoutTimes {
   startedAt: string
   finishedAt: string
+  /** Weight sets logged. A workout with cardio and no sets counts no weight-training time. */
+  setCount?: number
+  /** Cardio done in the workout. Its time counts as cardio, not as weight training. */
+  cardio?: CardioMetInput[]
 }
 
-/** Minutes counted for a workout: its logged length, capped at MAX_WORKOUT_MINUTES. */
+/** Weight-training minutes in a workout before the cap: its length minus the timed cardio. */
+function weightsMinutes(w: WorkoutTimes): number {
+  const cardio = w.cardio ?? []
+  if (cardio.length > 0 && w.setCount === 0) return 0
+  const cardioMs = cardio.reduce((sum, c) => sum + c.durationS * 1000, 0)
+  return Math.max(0, (Date.parse(w.finishedAt) - Date.parse(w.startedAt) - cardioMs) / 60_000)
+}
+
+/**
+ * Weight-training minutes counted for a workout: its logged length minus any timed
+ * cardio, capped at MAX_WORKOUT_MINUTES. Zero for a workout that was only cardio.
+ */
 export function countedWorkoutMinutes(w: WorkoutTimes): number {
-  const minutes = (Date.parse(w.finishedAt) - Date.parse(w.startedAt)) / 60_000
-  return Math.min(MAX_WORKOUT_MINUTES, Math.max(0, minutes))
+  return Math.min(MAX_WORKOUT_MINUTES, weightsMinutes(w))
 }
 
 /**
@@ -208,7 +222,7 @@ export function netActivityKcal({
   return Math.max(0, gross - resting) * Math.max(0, minutes)
 }
 
-/** The local day (YYYY-MM-DD) a session started on. */
+/** The local day (YYYY-MM-DD) a workout started on. */
 const startDay = (startedAt: string) => todayIsoDate(new Date(startedAt))
 
 // ---- Whole day ---------------------------------------------------------------
@@ -219,9 +233,9 @@ export interface DayEnergyEstimate {
   restingKcal: number
   /** Everyday movement and digesting food: resting x (PAL - 1) */
   everydayKcal: number
-  /** Logged weights workouts, above resting */
+  /** Weight training in logged workouts, above resting */
   workoutKcal: number
-  /** Logged cardio, above resting */
+  /** Cardio in logged workouts, above resting */
   cardioKcal: number
   totalKcal: number
   pal: number
@@ -232,29 +246,26 @@ export interface DayEnergyEstimate {
 
 export type DayEnergyResult = { ok: true; estimate: DayEnergyEstimate } | { ok: false; missing: MissingDetail[] }
 
-/** Estimated total energy burned on a day, split into resting, everyday activity and workouts. */
+/** Estimated total energy burned on a day, split into resting, everyday activity, weight training and cardio. */
 export function estimateDayEnergy({
   day,
   profile,
   weights,
   workouts,
-  cardio = [],
 }: {
   day: string
   profile: Pick<Profile, 'heightCm' | 'birthYear' | 'sex' | 'dailyActivity' | 'workoutEffort'>
   weights: BodyWeightEntry[]
-  /** Workouts and cardio are counted on the local day they started */
+  /** Workouts (and the cardio in them) are counted on the local day they started */
   workouts: WorkoutTimes[]
-  cardio?: CardioSession[]
 }): DayEnergyResult {
   const stats = bodyStatsOn(day, weights, profile)
   const resting = stats && restingEnergy(stats)
   if (!stats || !resting) return { ok: false, missing: missingDetails(profile, stats) }
 
   const pal = DAILY_ACTIVITY_PAL[profile.dailyActivity ?? 'sitting']
-  const workoutKcal = workouts
-    .filter((w) => startDay(w.startedAt) === day)
-    .reduce(
+  const onDay = workouts.filter((w) => startDay(w.startedAt) === day)
+  const workoutKcal = onDay.reduce(
       (sum, w) =>
         sum +
         workoutEnergy({
@@ -265,12 +276,9 @@ export function estimateDayEnergy({
         }),
       0,
     )
-  const cardioKcal = cardio
-    .filter((c) => startDay(c.startedAt) === day)
-    .reduce((sum, c) => {
-      const m = cardioMet(c)
-      return m ? sum + netActivityKcal({ met: m.met, minutes: c.durationS / 60, weightKg: stats.weightKg, restingKcalPerDay: resting.kcalPerDay }) : sum
-    }, 0)
+  const cardioKcal = onDay
+    .flatMap((w) => w.cardio ?? [])
+    .reduce((sum, c) => sum + (cardioKcalFor(c, stats.weightKg, resting.kcalPerDay) ?? 0), 0)
   const restingKcal = resting.kcalPerDay
   const everydayKcal = restingKcal * (pal - 1)
   return {
@@ -289,14 +297,46 @@ export function estimateDayEnergy({
   }
 }
 
-export interface WorkoutEnergyEstimate {
+export interface CardioEnergyEstimate extends CardioMet {
   kcal: number
-  /** Minutes counted (capped at MAX_WORKOUT_MINUTES) */
   minutes: number
-  /** True when the logged length was longer than the cap */
+  weightKg: number
+  resting: RestingEstimate
+}
+
+/** Energy above resting for one piece of cardio, or null without a MET value. */
+function cardioKcalFor(c: CardioMetInput, weightKg: number, restingKcalPerDay: number): number | null {
+  const m = cardioMet(c)
+  return m ? netActivityKcal({ met: m.met, minutes: c.durationS / 60, weightKg, restingKcalPerDay }) : null
+}
+
+function cardioEstimate(c: CardioMetInput, stats: BodyStats, resting: RestingEstimate): CardioEnergyEstimate | null {
+  const m = cardioMet(c)
+  if (!m) return null
+  const minutes = c.durationS / 60
+  return {
+    ...m,
+    kcal: netActivityKcal({ met: m.met, minutes, weightKg: stats.weightKg, restingKcalPerDay: resting.kcalPerDay }),
+    minutes,
+    weightKg: stats.weightKg,
+    resting,
+  }
+}
+
+export interface WorkoutEnergyEstimate {
+  /** Weight training plus cardio, above resting */
+  kcal: number
+  /** The weight-training part */
+  weightsKcal: number
+  /** Weight-training minutes counted (capped at MAX_WORKOUT_MINUTES); 0 for a cardio-only workout */
+  minutes: number
+  /** True when the weight-training time was longer than the cap */
   capped: boolean
   effort: WorkoutEffort
   met: number
+  /** One per cardio exercise, in order; null for an 'other' exercise without a MET value */
+  cardio: Array<CardioEnergyEstimate | null>
+  cardioKcal: number
   weightKg: number
   resting: RestingEstimate
 }
@@ -315,65 +355,52 @@ export function estimateWorkoutEnergy({
   const resting = stats && restingEnergy(stats)
   if (!stats || !resting) return null
   const minutes = countedWorkoutMinutes(workout)
-  const kcal = workoutEnergy({
+  const weightsKcal = workoutEnergy({
     minutes,
     effort: profile.workoutEffort,
     weightKg: stats.weightKg,
     restingKcalPerDay: resting.kcalPerDay,
   })
-  const logged = (Date.parse(workout.finishedAt) - Date.parse(workout.startedAt)) / 60_000
+  const cardio = (workout.cardio ?? []).map((c) => cardioEstimate(c, stats, resting))
+  const cardioKcal = cardio.reduce((sum, c) => sum + (c?.kcal ?? 0), 0)
   return {
-    kcal,
+    kcal: weightsKcal + cardioKcal,
+    weightsKcal,
     minutes,
-    capped: logged > MAX_WORKOUT_MINUTES,
+    capped: weightsMinutes(workout) > MAX_WORKOUT_MINUTES,
     effort: profile.workoutEffort,
     met: WORKOUT_MET[profile.workoutEffort],
+    cardio,
+    cardioKcal,
     weightKg: stats.weightKg,
     resting,
   }
 }
 
-export interface CardioEnergyEstimate extends CardioMet {
-  kcal: number
-  minutes: number
-  weightKg: number
-  resting: RestingEstimate
-}
-
 export type CardioEnergyResult =
   | { ok: true; estimate: CardioEnergyEstimate }
-  /** 'met' means an 'other' session without a MET value */
+  /** 'met' means an 'other' exercise without a MET value */
   | { ok: false; missing: Array<MissingDetail | 'met'> }
 
-/** Estimated energy for one cardio session, above resting. */
+/** Estimated energy for one piece of cardio, above resting, on the day it started. */
 export function estimateCardioEnergy({
-  session,
+  cardio,
+  startedAt,
   profile,
   weights,
 }: {
-  session: Pick<CardioSession, 'activity' | 'startedAt' | 'durationS' | 'distanceM' | 'effort' | 'met'>
+  cardio: CardioMetInput
+  startedAt: string
   profile: Pick<Profile, 'heightCm' | 'birthYear' | 'sex'>
   weights: BodyWeightEntry[]
 }): CardioEnergyResult {
-  const stats = bodyStatsOn(startDay(session.startedAt), weights, profile)
+  const stats = bodyStatsOn(startDay(startedAt), weights, profile)
   const resting = stats && restingEnergy(stats)
-  const m = cardioMet(session)
-  if (!stats || !resting || !m) {
-    const missing: Array<MissingDetail | 'met'> = !stats || !resting ? missingDetails(profile, stats) : []
-    if (!m) missing.push('met')
-    return { ok: false, missing }
-  }
-  const minutes = session.durationS / 60
-  return {
-    ok: true,
-    estimate: {
-      ...m,
-      kcal: netActivityKcal({ met: m.met, minutes, weightKg: stats.weightKg, restingKcalPerDay: resting.kcalPerDay }),
-      minutes,
-      weightKg: stats.weightKg,
-      resting,
-    },
-  }
+  const estimate = stats && resting ? cardioEstimate(cardio, stats, resting) : null
+  if (estimate) return { ok: true, estimate }
+  const missing: Array<MissingDetail | 'met'> = !stats || !resting ? missingDetails(profile, stats) : []
+  if (!cardioMet(cardio)) missing.push('met')
+  return { ok: false, missing }
 }
 
 /** Round an estimate so it doesn't look more precise than it is: 10 kcal or 50 kJ steps. */

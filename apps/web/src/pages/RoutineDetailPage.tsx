@@ -4,6 +4,7 @@ import { ClockIcon, PlayIcon } from '../components/icons'
 import { StartWorkoutDialogs } from '../components/StartWorkoutDialogs'
 import { Button, Card, ErrorText, LoadingBlock, PageHeader } from '../components/ui'
 import { useRoutine, useWeightUnit } from '../hooks/data'
+import { formatGoal } from '../lib/cardio'
 import { useStartWorkout } from '../workout/useStartWorkout'
 
 /** "3 × 10 @ 60 kg" when all sets match, otherwise "10 · 8 · 6". */
@@ -27,6 +28,13 @@ export function RoutineDetailPage() {
   if (routine.error) return <ErrorText error={routine.error} />
   const r = routine.data
   const totalSets = r.exercises.reduce((n, e) => n + e.sets.length, 0)
+  const cardioCount = r.exercises.filter((e) => e.exercise.kind === 'cardio').length
+  const parts = [
+    `${r.exercises.length} ${r.exercises.length === 1 ? 'exercise' : 'exercises'}`,
+    totalSets > 0 && `${totalSets} sets`,
+    cardioCount > 0 && `${cardioCount} cardio`,
+    r.notes,
+  ].filter(Boolean)
 
   return (
     <>
@@ -36,7 +44,7 @@ export function RoutineDetailPage() {
       <div className="mt-3">
         <PageHeader
           title={r.name}
-          subtitle={`${r.exercises.length} exercises · ${totalSets} sets${r.notes ? ` · ${r.notes}` : ''}`}
+          subtitle={parts.join(' · ')}
           action={
             <Link to={`/routines/${r.id}/edit`}>
               <Button tabIndex={-1}>Edit</Button>
@@ -51,7 +59,7 @@ export function RoutineDetailPage() {
         className="w-full mb-6"
         onClick={() => starter.startRoutine(r.id)}
         loading={starter.startingId === r.id}
-        disabled={totalSets === 0}
+        disabled={totalSets === 0 && cardioCount === 0}
       >
         <PlayIcon className="size-5" /> Start workout
       </Button>
@@ -64,12 +72,18 @@ export function RoutineDetailPage() {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold truncate">{e.exercise.name}</p>
-                <p className="text-sm text-zinc-400">{summariseSets(e.sets, unit)}</p>
+                <p className="text-sm text-zinc-400">
+                  {e.exercise.kind === 'cardio'
+                    ? `Cardio · ${e.targetDurationS != null ? `Goal ${formatGoal(e.targetDurationS)}` : 'No goal'}`
+                    : summariseSets(e.sets, unit)}
+                </p>
               </div>
-              <span className="flex items-center gap-1 text-xs text-zinc-500 shrink-0">
-                <ClockIcon className="size-3.5" />
-                {e.restSeconds ? formatDuration(e.restSeconds) : 'No rest'}
-              </span>
+              {e.exercise.kind !== 'cardio' && (
+                <span className="flex items-center gap-1 text-xs text-zinc-500 shrink-0">
+                  <ClockIcon className="size-3.5" />
+                  {e.restSeconds ? formatDuration(e.restSeconds) : 'No rest'}
+                </span>
+              )}
             </Card>
           </li>
         ))}

@@ -25,11 +25,16 @@ export function useStartWorkout() {
     setError(null)
     try {
       const routine = await qc.fetchQuery({ queryKey: keys.routine(routineId), queryFn: () => getRoutine(supabase, routineId) })
-      if (!routine.exercises.some((e) => e.sets.length > 0)) throw new Error('Add at least one exercise with a set to this routine first.')
+      if (!routine.exercises.some((e) => e.sets.length > 0 || e.exercise.kind === 'cardio')) {
+        throw new Error('Add at least one exercise with a set, or a cardio exercise, to this routine first.')
+      }
       // History powers "last time" hints and PR badges; never block a workout on it.
       let history: Record<string, ExerciseHistory> = {}
       try {
-        history = await getExerciseHistory(supabase, routine.exercises.map((e) => e.exerciseId))
+        history = await getExerciseHistory(
+          supabase,
+          routine.exercises.filter((e) => e.exercise.kind !== 'cardio').map((e) => e.exerciseId),
+        )
       } catch {
         // offline or failed: start without hints
       }

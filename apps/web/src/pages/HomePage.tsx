@@ -1,14 +1,11 @@
 import { estimateDayEnergy, NO_TARGETS, sumNutrients, todayIsoDate } from '@setsmart/core'
 import { Link } from 'react-router'
 import { PlayIcon, PlusIcon, SettingsIcon } from '../components/icons'
-import { CardioCard } from '../components/CardioCard'
 import { SessionCard } from '../components/SessionCard'
 import { StartWorkoutDialogs } from '../components/StartWorkoutDialogs'
 import { Button, Card, ErrorText } from '../components/ui'
 import {
   useBodyWeights,
-  useCardioBetween,
-  useCardioSessions,
   useEnergyUnit,
   useFoodLogs,
   useNutritionTargets,
@@ -18,7 +15,6 @@ import {
   useWorkoutSessions,
   useWorkoutTimes,
 } from '../hooks/data'
-import { mergeActivities } from '../lib/activity'
 import { formatEstimate } from '../lib/energy'
 import { EstimateInfo, TotalInfoText } from '../components/energy/EstimateInfo'
 import { energyLabel, energyNumber } from '../lib/nutrition'
@@ -35,9 +31,7 @@ export function HomePage() {
   const profile = useProfile()
   const routines = useRoutines()
   const sessions = useWorkoutSessions(20)
-  const cardio = useCardioSessions(20)
-  const activities = mergeActivities(sessions.data, cardio.data)
-  const loaded = sessions.data != null && cardio.data != null
+  const activities = sessions.data ?? []
   const unit = useWeightUnit()
   const starter = useStartWorkout()
   const bodyWeights = useBodyWeights()
@@ -45,7 +39,7 @@ export function HomePage() {
   const now = useNow(60_000)
 
   const weekAgo = now - 7 * 86_400_000
-  const thisWeek = activities.filter((a) => Date.parse(a.data.startedAt) >= weekAgo).length
+  const thisWeek = activities.filter((a) => Date.parse(a.startedAt) >= weekAgo).length
   const name = profile.data?.displayName?.split(' ')[0]
 
   return (
@@ -75,7 +69,7 @@ export function HomePage() {
               day.setDate(day.getDate() - (6 - i))
               const next = day.getTime() + 86_400_000
               const trained = activities.some((a) => {
-                const t = Date.parse(a.data.startedAt)
+                const t = Date.parse(a.startedAt)
                 return t >= day.getTime() && t < next
               })
               return (
@@ -140,25 +134,16 @@ export function HomePage() {
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-bold">Recent activity</h2>
-          <div className="flex items-center gap-4">
-            <Link to="/history/cardio/new" className="text-sm text-accent flex items-center gap-1">
-              <PlusIcon className="size-4" /> Log cardio
-            </Link>
-            <Link to="/history" className="text-sm text-zinc-400 hover:text-zinc-100">
-              See all
-            </Link>
-          </div>
+          <Link to="/history" className="text-sm text-zinc-400 hover:text-zinc-100">
+            See all
+          </Link>
         </div>
-        <ErrorText error={sessions.error ?? cardio.error} />
-        {loaded && activities.length === 0 && <p className="text-sm text-zinc-500">No workouts or cardio logged yet.</p>}
+        <ErrorText error={sessions.error} />
+        {sessions.data?.length === 0 && <p className="text-sm text-zinc-500">No workouts logged yet.</p>}
         <div className="space-y-2">
-          {activities.slice(0, 3).map((a) =>
-            a.kind === 'workout' ? (
-              <SessionCard key={a.data.id} session={a.data} unit={unit} />
-            ) : (
-              <CardioCard key={a.data.id} session={a.data} />
-            ),
-          )}
+          {activities.slice(0, 3).map((s) => (
+            <SessionCard key={s.id} session={s} unit={unit} />
+          ))}
         </div>
       </section>
     </>
@@ -177,10 +162,9 @@ function TodayFoodCard() {
   const profile = useProfile()
   const weights = useBodyWeights()
   const workouts = useWorkoutTimes(today)
-  const cardio = useCardioBetween(today)
   const burn =
-    profile.data && weights.data && workouts.data && cardio.data
-      ? estimateDayEnergy({ day: today, profile: profile.data, weights: weights.data, workouts: workouts.data, cardio: cardio.data })
+    profile.data && weights.data && workouts.data
+      ? estimateDayEnergy({ day: today, profile: profile.data, weights: weights.data, workouts: workouts.data })
       : null
   return (
     // Stretched link: the whole card opens the Food page, while the estimate's info

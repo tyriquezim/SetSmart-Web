@@ -5,7 +5,7 @@
 // When a run, walk or outdoor ride has a distance, the average speed picks the
 // Compendium row for that speed. Otherwise the effort the user chose picks a row.
 
-import type { CardioActivity, CardioEffort, CardioSession } from '../types'
+import type { CardioActivity, CardioEffort, CardioMetInput } from '../types'
 
 export interface CompendiumRow {
   code: string
@@ -225,13 +225,8 @@ export const CARDIO_ACTIVITY_ORDER: CardioActivity[] = [
 /** Where to look up a MET value for an activity that isn't listed. */
 export const COMPENDIUM_URL = 'https://pacompendium.com/'
 
-/** The name shown for a session, e.g. "Run" or the user's own name for 'other'. */
-export function cardioName(s: Pick<CardioSession, 'activity' | 'customName'>): string {
-  return (s.activity === 'other' && s.customName?.trim()) || CARDIO_ACTIVITIES[s.activity].label
-}
-
 /** Average speed in km/h, or null without a distance. */
-export function averageSpeedKmh(s: Pick<CardioSession, 'durationS' | 'distanceM'>): number | null {
+export function averageSpeedKmh(s: Pick<CardioMetInput, 'durationS' | 'distanceM'>): number | null {
   if (s.distanceM == null || !(s.durationS > 0)) return null
   return s.distanceM / 1000 / (s.durationS / 3600)
 }
@@ -259,11 +254,11 @@ export interface CardioMet {
 }
 
 /**
- * The MET value used for a session, or null for an 'other' session without one.
+ * The MET value used for a piece of cardio, or null for an 'other' exercise without one.
  * Speed (from distance and time) wins when the activity has speed rows; otherwise
  * the chosen effort, falling back to the middle option if none was chosen.
  */
-export function cardioMet(s: Pick<CardioSession, 'activity' | 'durationS' | 'distanceM' | 'effort' | 'met'>): CardioMet | null {
+export function cardioMet(s: CardioMetInput): CardioMet | null {
   const info = CARDIO_ACTIVITIES[s.activity]
   if (s.activity === 'other') return s.met != null && s.met > 0 ? { met: s.met, source: { kind: 'custom' } } : null
   const speed = averageSpeedKmh(s)

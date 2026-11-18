@@ -47,13 +47,22 @@ export const EQUIPMENT = [
   'Other',
 ] as const
 
+/** Weights exercises are logged as sets; cardio exercises are timed. */
+export type ExerciseKind = 'weights' | 'cardio'
+
 export interface Exercise {
   id: string
   /** null for built-in exercises */
   ownerId: string | null
   name: string
+  kind: ExerciseKind
+  /** 'Cardio' for cardio exercises */
   muscleGroup: string
   equipment: string
+  /** Cardio only: which Compendium activity it counts as for energy estimates */
+  cardioActivity: CardioActivity | null
+  /** Cardio only, for activity 'other': a MET value the user looked up */
+  cardioMet: number | null
   archivedAt: string | null
 }
 
@@ -67,7 +76,10 @@ export interface RoutineExercise {
   exerciseId: string
   exercise: Exercise
   restSeconds: number
+  /** Empty for cardio exercises */
   sets: PlannedSet[]
+  /** Cardio only: the goal duration in seconds, or null for no goal */
+  targetDurationS: number | null
   notes: string | null
 }
 
@@ -91,7 +103,7 @@ export interface RoutineInput {
   id: string | null
   name: string
   notes: string | null
-  exercises: Array<Pick<RoutineExercise, 'exerciseId' | 'restSeconds' | 'sets' | 'notes'>>
+  exercises: Array<Pick<RoutineExercise, 'exerciseId' | 'restSeconds' | 'sets' | 'targetDurationS' | 'notes'>>
 }
 
 export interface WorkoutSessionSummary {
@@ -103,6 +115,8 @@ export interface WorkoutSessionSummary {
   setCount: number
   /** Sum of reps × weight in kg */
   volumeKg: number
+  /** Cardio done in this workout, in the order it was done */
+  cardio: LoggedCardio[]
 }
 
 export interface LoggedWorkoutSet {
@@ -124,6 +138,7 @@ export interface WorkoutSessionDetail extends WorkoutSessionSummary {
 
 // ---- Cardio ------------------------------------------------------------------
 
+/** Which Compendium activity a cardio exercise counts as. */
 export type CardioActivity =
   | 'run'
   | 'walk'
@@ -137,25 +152,30 @@ export type CardioActivity =
   | 'hiit'
   | 'other'
 
-/** How hard a cardio session felt; picks a Compendium row when speed can't be used. */
+/** How hard a cardio exercise felt; picks a Compendium row when speed can't be used. */
 export type CardioEffort = 'light' | 'moderate' | 'vigorous'
 
-export interface CardioSession {
-  id: string
+/** What's needed to pick a MET value for a piece of cardio. */
+export interface CardioMetInput {
   activity: CardioActivity
-  /** Only for 'other', e.g. "Kayaking" */
-  customName: string | null
-  startedAt: string
   durationS: number
   /** Metres; optional */
   distanceM: number | null
   effort: CardioEffort | null
-  /** Only for 'other': a MET value the user looked up */
+  /** Only for 'other': the exercise's MET value */
   met: number | null
-  notes: string | null
 }
 
-export type CardioInput = Omit<CardioSession, 'id'> & { id: string | null }
+/** One cardio exercise done in a logged workout. */
+export interface LoggedCardio extends CardioMetInput {
+  exerciseId: string
+  exerciseName: string
+  exercisePosition: number
+  /** The routine's goal duration, if it had one */
+  targetDurationS: number | null
+  /** When the timer was first started */
+  startedAt: string
+}
 
 export interface BodyWeightEntry {
   id: string

@@ -203,12 +203,13 @@ export function WorkoutsDayInfoText({
     <>
       <p>
         Each workout logged on this day counts {WORKOUT_MET[effort]} METs for {EFFORT_LABEL[effort]} weight training
-        (2024 Compendium of Physical Activities) for its length, at your weight of {n(estimate.stats.weightKg, 1)} kg.
-        Only the energy above resting counts, because resting is already in the total.
+        (2024 Compendium of Physical Activities) for its length, minus any timed cardio, at your weight of{' '}
+        {n(estimate.stats.weightKg, 1)} kg. Workouts that were only cardio don't count here. Only the energy above
+        resting counts, because resting is already in the total.
       </p>
       <Formula>(MET × 3.5 × kg ÷ 200 − resting kcal per min) × minutes</Formula>
       <p>
-        Workouts: <Kcal kcal={estimate.workoutKcal} unit={unit} />. Change workout effort in{' '}
+        Weight training: <Kcal kcal={estimate.workoutKcal} unit={unit} />. Change workout effort in{' '}
         <Link to="/settings" className="text-accent">
           Settings
         </Link>
@@ -223,8 +224,8 @@ export function TotalInfoText({ estimate, unit }: { estimate: DayEnergyEstimate;
     <>
       <p>Your estimated burn for the whole day is four estimates added together.</p>
       <Formula>
-        resting {n(estimate.restingKcal)} + everyday {n(estimate.everydayKcal)} + workouts {n(estimate.workoutKcal)} +
-        cardio {n(estimate.cardioKcal)}
+        resting {n(estimate.restingKcal)} + everyday {n(estimate.everydayKcal)} + weight training{' '}
+        {n(estimate.workoutKcal)} + cardio {n(estimate.cardioKcal)}
         <br />= {n(estimate.totalKcal)} kcal
       </Formula>
       <p>
@@ -235,24 +236,65 @@ export function TotalInfoText({ estimate, unit }: { estimate: DayEnergyEstimate;
   )
 }
 
-export function WorkoutInfoText({ workout, unit }: { workout: WorkoutEnergyEstimate; unit: EnergyUnit }) {
+/** A workout's weight training and cardio. `cardioNames` lines up with `workout.cardio`. */
+export function WorkoutInfoText({
+  workout,
+  unit,
+  cardioNames = [],
+}: {
+  workout: WorkoutEnergyEstimate
+  unit: EnergyUnit
+  cardioNames?: string[]
+}) {
   const gross = workout.met * (3.5 / 200) * workout.weightKg
   const rest = workout.resting.kcalPerDay / 1440
+  const hasCardio = workout.cardio.length > 0
   return (
     <>
-      <p>
-        Based on {workout.met} METs for {EFFORT_LABEL[workout.effort]} weight training (2024 Compendium of Physical
-        Activities), your weight of {n(workout.weightKg, 1)} kg and the workout's length. Resting energy is subtracted
-        because it's counted separately.
-      </p>
-      <Formula>
-        ({workout.met} × 3.5 × {n(workout.weightKg, 1)} ÷ 200 − {n(rest, 2)} resting) × {n(workout.minutes)} min
-        <br />= ({n(gross, 2)} − {n(rest, 2)}) × {n(workout.minutes)} = {n(workout.kcal)} kcal
-      </Formula>
+      {workout.minutes > 0 && (
+        <>
+          <p>
+            Weight training uses {workout.met} METs for {EFFORT_LABEL[workout.effort]} weight training (2024 Compendium
+            of Physical Activities), your weight of {n(workout.weightKg, 1)} kg and the workout's length
+            {hasCardio && ', minus the time you spent on cardio'}. Resting energy is subtracted because it's counted
+            separately.
+          </p>
+          <Formula>
+            ({workout.met} × 3.5 × {n(workout.weightKg, 1)} ÷ 200 − {n(rest, 2)} resting) × {n(workout.minutes)} min
+            <br />= ({n(gross, 2)} − {n(rest, 2)}) × {n(workout.minutes)} = {n(workout.weightsKcal)} kcal
+          </Formula>
+          {workout.capped && (
+            <p>
+              The weight training ran longer than {MAX_WORKOUT_MINUTES / 60} hours, so only {MAX_WORKOUT_MINUTES / 60} hours
+              are counted.
+            </p>
+          )}
+        </>
+      )}
+      {hasCardio && (
+        <>
+          <p>
+            Each cardio exercise gets a MET value from the 2024 Compendium, from your speed when you added a distance or
+            pace, otherwise from the effort you chose. Tap the ⓘ next to it on the workout's page for the details.
+          </p>
+          <ul className="list-disc pl-5">
+            {workout.cardio.map((c, i) => (
+              <li key={i}>
+                {cardioNames[i] ?? 'Cardio'}:{' '}
+                {c ? (
+                  <>
+                    {c.met} METs for {n(c.minutes, 1)} min, <Kcal kcal={c.kcal} unit={unit} />
+                  </>
+                ) : (
+                  'no MET value, so not counted'
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       <p>
         This workout: <Kcal kcal={workout.kcal} unit={unit} /> above resting.
-        {workout.capped &&
-          ` It ran longer than ${MAX_WORKOUT_MINUTES / 60} hours, so only ${MAX_WORKOUT_MINUTES / 60} hours are counted.`}
       </p>
     </>
   )
@@ -262,13 +304,14 @@ export function CardioDayInfoText({ estimate, unit }: { estimate: DayEnergyEstim
   return (
     <>
       <p>
-        Each cardio session logged on this day gets a MET value from the 2024 Compendium of Physical Activities. For
-        runs, walks and outdoor rides with a distance, the value comes from your average speed. Otherwise it comes from
-        the effort you chose. Only the energy above resting counts.
+        Each cardio exercise done in a workout on this day gets a MET value from the 2024 Compendium of Physical
+        Activities. For runs, walks and outdoor rides with a distance or pace, the value comes from your average speed.
+        Otherwise it comes from the effort you chose. It's counted for the time on your timer, and only the energy above
+        resting counts.
       </p>
       <Formula>(MET × 3.5 × kg ÷ 200 − resting kcal per min) × minutes</Formula>
       <p>
-        Cardio: <Kcal kcal={estimate.cardioKcal} unit={unit} />. Tap a session in{' '}
+        Cardio: <Kcal kcal={estimate.cardioKcal} unit={unit} />. Tap a workout in{' '}
         <Link to="/history" className="text-accent">
           History
         </Link>{' '}
@@ -278,7 +321,7 @@ export function CardioDayInfoText({ estimate, unit }: { estimate: DayEnergyEstim
   )
 }
 
-/** Why a cardio session got its MET value, then the sum. */
+/** Why a piece of cardio got its MET value, then the sum. */
 export function CardioInfoText({
   cardio,
   unit,
@@ -306,13 +349,13 @@ export function CardioInfoText({
           {cardio.met} METs.
         </p>
       )}
-      {src.kind === 'custom' && <p>You entered {cardio.met} METs for this activity.</p>}
+      {src.kind === 'custom' && <p>You entered {cardio.met} METs for this exercise.</p>}
       <Formula>
         ({cardio.met} × 3.5 × {n(cardio.weightKg, 1)} ÷ 200 − {n(rest, 2)} resting) × {n(cardio.minutes, 1)} min
         <br />= ({n(gross, 2)} − {n(rest, 2)}) × {n(cardio.minutes, 1)} = {n(cardio.kcal)} kcal
       </Formula>
       <p>
-        This session: <Kcal kcal={cardio.kcal} unit={unit} /> above resting. Hills, wind, heat and your fitness change
+        This exercise: <Kcal kcal={cardio.kcal} unit={unit} /> above resting. Hills, wind, heat and your fitness change
         the real number, and they aren't counted.
       </p>
     </>

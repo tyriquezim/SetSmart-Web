@@ -1,4 +1,4 @@
-import { estimateDayEnergy, KJ_PER_KCAL, roundEstimate, type CardioSession, type EnergyUnit, type WorkoutTimes } from '@setsmart/core'
+import { estimateDayEnergy, KJ_PER_KCAL, roundEstimate, type EnergyUnit, type WorkoutTimes } from '@setsmart/core'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { useBodyWeights, useProfile } from '../../hooks/data'
@@ -14,21 +14,20 @@ const UNCERTAINTY = 0.1
 
 /**
  * Eaten vs estimated energy burned for one day, with the burn split into resting,
- * everyday activity and workouts. Always labelled as an estimate.
+ * everyday activity, weight training and cardio. Always labelled as an estimate.
  */
 export function EnergyBalanceCard({
   day,
   today,
   eatenKj,
   workouts,
-  cardio,
   unit,
 }: {
   day: string
   today: string
   eatenKj: number
+  /** Including the cardio done in them */
   workouts: WorkoutTimes[]
-  cardio: CardioSession[]
   unit: EnergyUnit
 }) {
   const profile = useProfile()
@@ -38,9 +37,9 @@ export function EnergyBalanceCard({
   const result = useMemo(
     () =>
       profile.data && weights.data
-        ? estimateDayEnergy({ day, profile: profile.data, weights: weights.data, workouts, cardio })
+        ? estimateDayEnergy({ day, profile: profile.data, weights: weights.data, workouts })
         : null,
-    [day, profile.data, weights.data, workouts, cardio],
+    [day, profile.data, weights.data, workouts],
   )
   if (!result) return null
 
@@ -117,10 +116,10 @@ export function EnergyBalanceCard({
       ),
     },
     {
-      name: 'Workouts',
+      name: 'Weight training',
       kcal: e.workoutKcal,
       info: (
-        <EstimateInfo label="How workout energy is estimated" title="Workouts" unit={unit} estimate={e}>
+        <EstimateInfo label="How weight training energy is estimated" title="Weight training" unit={unit} estimate={e}>
           <WorkoutsDayInfoText estimate={e} effort={p.workoutEffort} unit={unit} />
         </EstimateInfo>
       ),

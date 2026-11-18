@@ -1,11 +1,12 @@
-import { currentSet, workoutReducer, type WorkoutAction, type WorkoutState } from '@setsmart/core'
+import { currentExercise, currentSet, workoutReducer, type WorkoutAction, type WorkoutState } from '@setsmart/core'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useUser } from '../auth/context'
-import { playTick, restOverAlert } from './alarm'
+import { formatGoal } from '../lib/cardio'
+import { cardioGoalAlert, playTick, restOverAlert } from './alarm'
 import { ActiveWorkoutContext } from './context'
 
 const STORAGE_KEY = 'setsmart.activeWorkout.v1'
-/** If the app was closed for longer than this past the end of rest, don't sound the alarm on reopen. */
+/** If the app was closed for longer than this past the end of rest (or a cardio goal), don't sound the alarm on reopen. */
 const STALE_ALARM_MS = 60_000
 
 interface Stored {
@@ -64,8 +65,10 @@ export function ActiveWorkoutProvider({ children }: { children: ReactNode }) {
   // Rest timer: schedule countdown pips and the end-of-rest alarm from the absolute end time.
   const restEndsAt = workout?.phase.kind === 'rest' ? workout.phase.endsAt : null
   const nextUpLabel = useMemo(() => {
-    const cur = workout && currentSet(workout)
-    return cur ? `${cur.exercise.name} · Set ${cur.setNumber} of ${cur.totalSets}` : ''
+    if (!workout) return ''
+    const set = currentSet(workout)
+    if (set) return `${set.exercise.name} · Set ${set.setNumber} of ${set.totalSets}`
+    return currentExercise(workout)?.exercise.name ?? ''
   }, [workout])
 
   useEffect(() => {
@@ -84,6 +87,28 @@ export function ActiveWorkoutProvider({ children }: { children: ReactNode }) {
     )
     return () => timers.forEach(clearTimeout)
   }, [restEndsAt, nextUpLabel, dispatch])
+
+  // Cardio goal: while the timer runs, alert once when the timed total reaches the goal.
+  let goalAt: number | null = null
+  let goalLabel = ''
+  if (workout?.phase.kind === 'cardio' && workout.phase.runningSince != null) {
+    const ex = workout.exercises[workout.phase.exerciseIndex]
+    const goalMs = (ex.cardio?.targetDurationS ?? 0) * 1000
+    const left = goalMs - workout.phase.accumulatedMs
+    // Only if the goal is still ahead (not already passed before a pause)
+    if (goalMs > 0 && left > 0) {
+      goalAt = workout.phase.runningSince + left
+      goalLabel = `${ex.name} · ${formatGoal(goalMs / 1000)} done`
+    }
+  }
+
+  useEffect(() => {
+    if (goalAt == null) return
+    const id = window.setTimeout(() => {
+      if (Date.now() - goalAt < STALE_ALARM_MS) cardioGoalAlert(goalLabel)
+    }, Math.max(0, goalAt - Date.now()))
+    return () => clearTimeout(id)
+  }, [goalAt, goalLabel])
 
   const api = useMemo(
     () => ({ workout, dispatch, start: (w: WorkoutState) => update(w), discard: () => update(null) }),

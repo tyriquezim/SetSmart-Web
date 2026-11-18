@@ -9,9 +9,12 @@
  * - Time is passed in via actions (`now`, epoch ms) so the reducer stays pure
  *   and the rest timer survives tab switches/reloads: it stores an absolute
  *   `endsAt`, not a countdown.
+ * - Cardio exercises have no sets. They are timed instead: the 'cardio' phase
+ *   holds the timer (also as absolute times, so it survives reloads), and once
+ *   the timer is ended the user adds a distance or effort and logs it.
  */
 import { estimateOneRepMax } from '../progress/stats'
-import type { ExerciseHistory, PlannedSet, Routine } from '../types'
+import type { CardioActivity, CardioEffort, ExerciseHistory, PlannedSet, Routine } from '../types'
 
 export interface LoggedSet {
   reps: number
@@ -23,6 +26,25 @@ export interface LoggedSet {
 
 export type ExerciseStatus = 'pending' | 'done' | 'skipped'
 
+/** What a cardio exercise is, and its goal. */
+export interface CardioPlan {
+  activity: CardioActivity
+  /** MET value for an 'other' exercise */
+  met: number | null
+  /** Goal duration in seconds, or null for no goal */
+  targetDurationS: number | null
+}
+
+export interface LoggedCardioEntry {
+  /** When the timer was first started */
+  startedAt: string
+  /** Timed length in seconds, excluding pauses */
+  durationS: number
+  distanceM: number | null
+  effort: CardioEffort | null
+  completedAt: string
+}
+
 export interface WorkoutExercise {
   exerciseId: string
   name: string
@@ -32,11 +54,28 @@ export interface WorkoutExercise {
   status: ExerciseStatus
   /** Previous performance, if known when the workout started. */
   history?: ExerciseHistory
+  /** Set for cardio exercises, which are timed instead of logged as sets (sets is empty). */
+  cardio?: CardioPlan
+  /** The logged cardio, once the timer has been ended and saved */
+  cardioLog?: LoggedCardioEntry | null
 }
 
 export type WorkoutPhase =
   | { kind: 'set' }
   | { kind: 'rest'; startedAt: number; endsAt: number }
+  /**
+   * Timing the current (cardio) exercise. Elapsed time is `accumulatedMs` plus
+   * `now - runningSince` while running; `runningSince` is null while paused.
+   * `endedAt` is set once the user ends it, and then the log form is shown.
+   */
+  | {
+      kind: 'cardio'
+      exerciseIndex: number
+      startedAt: number
+      accumulatedMs: number
+      runningSince: number | null
+      endedAt: number | null
+    }
   | { kind: 'complete' }
 
 export interface WorkoutState {
@@ -63,19 +102,39 @@ export type WorkoutAction =
   | { type: 'editLoggedSet'; exerciseIndex: number; setIndex: number; reps: number; weightKg: number | null }
   | { type: 'finish'; now: number }
   | { type: 'reopen' }
+  | { type: 'startCardio'; now: number }
+  | { type: 'pauseCardio'; now: number }
+  | { type: 'resumeCardio'; now: number }
+  | { type: 'endCardio'; now: number }
+  /** Discard the timer and go back to the start screen */
+  | { type: 'cancelCardio' }
+  | { type: 'logCardio'; durationS: number; distanceM: number | null; effort: CardioEffort | null; now: number }
 
 export interface CreateWorkoutInput {
   id: string
   routineId: string | null
   name: string
-  exercises: Array<{ exerciseId: string; name: string; restSeconds: number; sets: PlannedSet[]; history?: ExerciseHistory }>
+  exercises: Array<{
+    exerciseId: string
+    name: string
+    restSeconds: number
+    sets: PlannedSet[]
+    history?: ExerciseHistory
+    cardio?: CardioPlan
+  }>
   now: number
 }
 
+export const isCardio = (e: WorkoutExercise): boolean => e.cardio != null
+
 export function createWorkout(input: CreateWorkoutInput): WorkoutState {
   const exercises: WorkoutExercise[] = input.exercises
-    .filter((e) => e.sets.length > 0)
-    .map((e) => ({ ...e, sets: e.sets.map((s) => ({ ...s })), logged: [], status: 'pending' }))
+    .filter((e) => e.cardio != null || e.sets.length > 0)
+    .map((e) =>
+      e.cardio
+        ? { ...e, sets: [], logged: [], status: 'pending' as const, cardio: { ...e.cardio }, cardioLog: null }
+        : { ...e, sets: e.sets.map((s) => ({ ...s })), logged: [], status: 'pending' as const },
+    )
   return {
     version: 1,
     id: input.id,
@@ -107,6 +166,10 @@ export function createWorkoutFromRoutine(
       restSeconds: re.restSeconds,
       sets: re.sets,
       history: history[re.exerciseId],
+      cardio:
+        re.exercise.kind === 'cardio' && re.exercise.cardioActivity
+          ? { activity: re.exercise.cardioActivity, met: re.exercise.cardioMet, targetDurationS: re.targetDurationS }
+          : undefined,
     })),
   })
 }
@@ -119,12 +182,25 @@ function replaceExercise(state: WorkoutState, index: number, ex: WorkoutExercise
   return state.exercises.map((e, i) => (i === index ? ex : e))
 }
 
+/** The current exercise is cardio and its timer hasn't been started. */
+function atCardioStart(state: WorkoutState): boolean {
+  return state.phase.kind === 'set' && state.queue.length > 0 && isCardio(state.exercises[state.queue[0]])
+}
+
+/** Milliseconds timed so far in the cardio phase (0 in any other phase). */
+export function cardioElapsedMs(state: WorkoutState, now: number): number {
+  const p = state.phase
+  if (p.kind !== 'cardio') return 0
+  return p.accumulatedMs + (p.runningSince != null ? Math.max(0, now - p.runningSince) : 0)
+}
+
 export function workoutReducer(state: WorkoutState, action: WorkoutAction): WorkoutState {
   switch (action.type) {
     case 'logSet': {
       if (state.phase.kind !== 'set' || state.queue.length === 0) return state
       const index = state.queue[0]
       const ex = state.exercises[index]
+      if (isCardio(ex)) return state
       const target = ex.sets[ex.logged.length] ?? ex.sets[ex.sets.length - 1]
       const logged: LoggedSet = {
         reps: Math.max(0, Math.round(action.reps)),
@@ -163,7 +239,7 @@ export function workoutReducer(state: WorkoutState, action: WorkoutAction): Work
     }
 
     case 'postpone': {
-      if (state.phase.kind === 'complete' || state.queue.length < 2) return state
+      if (!canPostpone(state)) return state
       const [current, ...rest] = state.queue
       const queue =
         action.to === 'next' ? [rest[0], current, ...rest.slice(1)] : [...rest, current]
@@ -181,6 +257,8 @@ export function workoutReducer(state: WorkoutState, action: WorkoutAction): Work
           status: ex.logged.length > 0 ? 'done' : 'skipped',
         }),
         queue: state.queue.slice(1),
+        // Skipping cardio mid-timer discards the timer.
+        phase: state.phase.kind === 'cardio' ? { kind: 'set' } : state.phase,
       }
       return next.queue.length === 0 ? complete(next, action.now) : next
     }
@@ -189,6 +267,7 @@ export function workoutReducer(state: WorkoutState, action: WorkoutAction): Work
       if (state.phase.kind === 'complete' || state.queue.length === 0) return state
       const index = state.queue[0]
       const ex = state.exercises[index]
+      if (isCardio(ex)) return state
       const last = ex.sets[ex.sets.length - 1] ?? { reps: 10, weightKg: null }
       return {
         ...state,
@@ -213,6 +292,67 @@ export function workoutReducer(state: WorkoutState, action: WorkoutAction): Work
     case 'reopen':
       if (state.phase.kind !== 'complete' || state.queue.length === 0) return state
       return { ...state, phase: { kind: 'set' }, finishedAt: null }
+
+    case 'startCardio':
+      if (!atCardioStart(state)) return state
+      return {
+        ...state,
+        phase: {
+          kind: 'cardio',
+          exerciseIndex: state.queue[0],
+          startedAt: action.now,
+          accumulatedMs: 0,
+          runningSince: action.now,
+          endedAt: null,
+        },
+      }
+
+    case 'pauseCardio': {
+      const p = state.phase
+      if (p.kind !== 'cardio' || p.runningSince == null) return state
+      return { ...state, phase: { ...p, accumulatedMs: cardioElapsedMs(state, action.now), runningSince: null } }
+    }
+
+    case 'resumeCardio': {
+      // Also undoes an accidental "End": the time in between isn't counted.
+      const p = state.phase
+      if (p.kind !== 'cardio' || p.runningSince != null) return state
+      return { ...state, phase: { ...p, runningSince: action.now, endedAt: null } }
+    }
+
+    case 'endCardio': {
+      const p = state.phase
+      if (p.kind !== 'cardio' || p.endedAt != null) return state
+      return {
+        ...state,
+        phase: { ...p, accumulatedMs: cardioElapsedMs(state, action.now), runningSince: null, endedAt: action.now },
+      }
+    }
+
+    case 'cancelCardio':
+      return state.phase.kind === 'cardio' ? { ...state, phase: { kind: 'set' } } : state
+
+    case 'logCardio': {
+      const p = state.phase
+      if (p.kind !== 'cardio' || p.endedAt == null) return state
+      const index = p.exerciseIndex
+      const ex = state.exercises[index]
+      const cardioLog: LoggedCardioEntry = {
+        startedAt: new Date(p.startedAt).toISOString(),
+        durationS: Math.min(86_400, Math.max(1, Math.round(action.durationS))),
+        distanceM: action.distanceM != null && action.distanceM > 0 ? action.distanceM : null,
+        effort: action.effort,
+        completedAt: new Date(action.now).toISOString(),
+      }
+      const next: WorkoutState = {
+        ...state,
+        exercises: replaceExercise(state, index, { ...ex, cardioLog, status: 'done' }),
+        performedOrder: state.performedOrder.includes(index) ? state.performedOrder : [...state.performedOrder, index],
+        queue: state.queue.filter((i) => i !== index),
+        phase: { kind: 'set' },
+      }
+      return next.queue.length === 0 ? complete(next, action.now) : next
+    }
   }
 }
 
@@ -233,11 +373,17 @@ export interface CurrentSetInfo {
   lastTime: PlannedSet | null
 }
 
-/** The set that will be performed next (current set, or the one after rest). */
-export function currentSet(state: WorkoutState): CurrentSetInfo | null {
+/** The exercise being done now (or, during rest, the one up next). */
+export function currentExercise(state: WorkoutState): { exerciseIndex: number; exercise: WorkoutExercise } | null {
   if (state.phase.kind === 'complete' || state.queue.length === 0) return null
-  const exerciseIndex = state.queue[0]
-  const exercise = state.exercises[exerciseIndex]
+  return { exerciseIndex: state.queue[0], exercise: state.exercises[state.queue[0]] }
+}
+
+/** The set that will be performed next (current set, or the one after rest). Null when the current exercise is cardio. */
+export function currentSet(state: WorkoutState): CurrentSetInfo | null {
+  const cur = currentExercise(state)
+  if (!cur || isCardio(cur.exercise)) return null
+  const { exerciseIndex, exercise } = cur
   const i = Math.min(exercise.logged.length, exercise.sets.length - 1)
   return {
     exerciseIndex,
@@ -287,8 +433,9 @@ export function workoutPRs(state: WorkoutState): ExercisePRs[] {
   })
 }
 
+/** Whether the current exercise can be swapped with the next. Not while a cardio timer is going. */
 export function canPostpone(state: WorkoutState): boolean {
-  return state.phase.kind !== 'complete' && state.queue.length >= 2
+  return state.phase.kind !== 'complete' && state.phase.kind !== 'cardio' && state.queue.length >= 2
 }
 
 export function restRemainingMs(state: WorkoutState, now: number): number {
@@ -300,6 +447,11 @@ export interface WorkoutTotals {
   setsPlanned: number
   volumeKg: number
   exercisesDone: number
+  /** Cardio exercises logged, and planned */
+  cardioLogged: number
+  cardioPlanned: number
+  /** Seconds of cardio logged */
+  cardioSeconds: number
 }
 
 export function workoutTotals(state: WorkoutState): WorkoutTotals {
@@ -307,13 +459,23 @@ export function workoutTotals(state: WorkoutState): WorkoutTotals {
   let setsPlanned = 0
   let volumeKg = 0
   let exercisesDone = 0
+  let cardioLogged = 0
+  let cardioPlanned = 0
+  let cardioSeconds = 0
   for (const ex of state.exercises) {
     setsLogged += ex.logged.length
     setsPlanned += ex.sets.length
     if (ex.status === 'done') exercisesDone++
     for (const s of ex.logged) volumeKg += s.reps * (s.weightKg ?? 0)
+    if (isCardio(ex)) {
+      cardioPlanned++
+      if (ex.cardioLog) {
+        cardioLogged++
+        cardioSeconds += ex.cardioLog.durationS
+      }
+    }
   }
-  return { setsLogged, setsPlanned, volumeKg, exercisesDone }
+  return { setsLogged, setsPlanned, volumeKg, exercisesDone, cardioLogged, cardioPlanned, cardioSeconds }
 }
 
 /** Payload for the `log_workout` RPC. */
@@ -333,6 +495,15 @@ export interface LogWorkoutPayload {
     reps: number
     weight_kg: number | null
     completed_at: string
+  }>
+  cardio: Array<{
+    exercise_id: string
+    exercise_position: number
+    target_duration_s: number | null
+    started_at: string
+    duration_s: number
+    distance_m: number | null
+    effort: CardioEffort | null
   }>
 }
 
@@ -356,5 +527,20 @@ export function toLogPayload(state: WorkoutState, notes: string | null = null): 
         completed_at: s.completedAt,
       })),
     ),
+    cardio: state.performedOrder.flatMap((exIndex, position) => {
+      const e = state.exercises[exIndex]
+      if (!e.cardio || !e.cardioLog) return []
+      return [
+        {
+          exercise_id: e.exerciseId,
+          exercise_position: position,
+          target_duration_s: e.cardio.targetDurationS,
+          started_at: e.cardioLog.startedAt,
+          duration_s: e.cardioLog.durationS,
+          distance_m: e.cardioLog.distanceM,
+          effort: e.cardioLog.effort,
+        },
+      ]
+    }),
   }
 }

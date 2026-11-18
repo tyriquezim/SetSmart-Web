@@ -1,6 +1,7 @@
 import { formatWeight, type WeightUnit, type WorkoutSessionSummary } from '@setsmart/core'
 import { Link } from 'react-router'
 import { useEnergyUnit } from '../hooks/data'
+import { distanceUnitFor, formatDistance } from '../lib/cardio'
 import { formatEstimate, useWorkoutEnergy } from '../lib/energy'
 import { formatDate, minutesBetween } from '../lib/format'
 import { EstimateInfo, WorkoutInfoText } from './energy/EstimateInfo'
@@ -11,6 +12,15 @@ import { Card } from './ui'
 export function SessionCard({ session, unit }: { session: WorkoutSessionSummary; unit: WeightUnit }) {
   const energyUnit = useEnergyUnit()
   const estimate = useWorkoutEnergy(session)
+  const distanceUnit = distanceUnitFor(unit)
+  const parts = [
+    `${minutesBetween(session.startedAt, session.finishedAt)} min`,
+    session.setCount > 0 && `${session.setCount} sets`,
+    session.setCount > 0 && formatWeight(unit, session.volumeKg),
+    ...session.cardio.map((c) =>
+      c.distanceM != null ? `${c.exerciseName} ${formatDistance(c.activity, distanceUnit, c.distanceM)}` : c.exerciseName,
+    ),
+  ].filter(Boolean)
   return (
     <Card className="relative p-4 flex items-center gap-4 hover:border-zinc-700">
       <div className="w-12 shrink-0 text-center">
@@ -22,15 +32,14 @@ export function SessionCard({ session, unit }: { session: WorkoutSessionSummary;
           {session.name}
         </Link>
         <p className="text-sm text-zinc-500">
-          {minutesBetween(session.startedAt, session.finishedAt)} min · {session.setCount} sets ·{' '}
-          {formatWeight(unit, session.volumeKg)}
+          {parts.join(' · ')}
           {estimate != null && (
             <>
               {' · '}
               <span className="whitespace-nowrap">
                 ≈ {formatEstimate(energyUnit, estimate.kcal)}{' '}
                 <EstimateInfo label="How this workout's energy is estimated" title="Workout energy" unit={energyUnit}>
-                  <WorkoutInfoText workout={estimate} unit={energyUnit} />
+                  <WorkoutInfoText workout={estimate} unit={energyUnit} cardioNames={session.cardio.map((c) => c.exerciseName)} />
                 </EstimateInfo>
               </span>
             </>

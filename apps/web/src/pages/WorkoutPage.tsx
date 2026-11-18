@@ -1,5 +1,6 @@
 import {
   canPostpone,
+  currentExercise,
   currentSet,
   formatDuration,
   formatWeight,
@@ -19,11 +20,13 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
+import { CardioLogScreen, CardioStartScreen, CardioTimerScreen } from '../components/CardioScreens'
 import { CheckIcon, SkipIcon, TrophyIcon } from '../components/icons'
 import { Button, Card, ConfirmModal, EmptyState, ErrorText, Input, Modal, NumberInput, Stepper } from '../components/ui'
 import { keys, useWeightUnit } from '../hooks/data'
 import { useNow } from '../hooks/useNow'
 import { useWakeLock } from '../hooks/useWakeLock'
+import { cardioSummary, distanceUnitFor, formatGoal } from '../lib/cardio'
 import { supabase } from '../lib/supabase'
 import { unlockAudio } from '../workout/alarm'
 import { useActiveWorkout } from '../workout/context'
@@ -46,7 +49,17 @@ export function WorkoutPage() {
   }
 
   const totals = workoutTotals(workout)
-  const progress = totals.setsPlanned ? totals.setsLogged / totals.setsPlanned : 0
+  const planned = totals.setsPlanned + totals.cardioPlanned
+  const progress = planned ? (totals.setsLogged + totals.cardioLogged) / planned : 0
+  const progressText = [
+    totals.setsPlanned > 0 && `${totals.setsLogged} / ${totals.setsPlanned} sets`,
+    totals.cardioPlanned > 0 && `${totals.cardioLogged} / ${totals.cardioPlanned} cardio`,
+    `${totals.exercisesDone} / ${workout.exercises.length} exercises`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+  const current = currentExercise(workout)
+  const timing = workout.phase.kind === 'cardio'
 
   return (
     <div className="space-y-5">
@@ -69,11 +82,22 @@ export function WorkoutPage() {
           <div className="h-full bg-accent transition-all" style={{ width: `${progress * 100}%` }} />
         </div>
         <p className="text-xs text-zinc-500 mt-1.5">
-          {totals.setsLogged} / {totals.setsPlanned} sets · {totals.exercisesDone} / {workout.exercises.length} exercises
+          {progressText}
         </p>
       </header>
 
-      {workout.phase.kind === 'set' && <SetScreen workout={workout} unit={unit} dispatch={dispatch} />}
+      {workout.phase.kind === 'set' &&
+        (current?.exercise.cardio ? (
+          <CardioStartScreen workout={workout} dispatch={dispatch} />
+        ) : (
+          <SetScreen workout={workout} unit={unit} dispatch={dispatch} />
+        ))}
+      {workout.phase.kind === 'cardio' &&
+        (workout.phase.endedAt == null ? (
+          <CardioTimerScreen workout={workout} dispatch={dispatch} />
+        ) : (
+          <CardioLogScreen workout={workout} dispatch={dispatch} distanceUnit={distanceUnitFor(unit)} />
+        ))}
       {workout.phase.kind === 'rest' && <RestScreen workout={workout} unit={unit} dispatch={dispatch} />}
       {workout.phase.kind === 'complete' && <SummaryScreen workout={workout} unit={unit} dispatch={dispatch} discard={discard} />}
 
@@ -101,8 +125,9 @@ export function WorkoutPage() {
         }
       >
         <p className="text-sm text-zinc-300">
-          You've logged {totals.setsLogged} of {totals.setsPlanned} sets. Finishing now takes you to the summary, where
-          you can save what you've done so far.
+          You've done {totals.exercisesDone} of {workout.exercises.length} exercises. Finishing now takes you to the
+          summary, where you can save what you've done so far.
+          {timing && ` The ${current?.exercise.name ?? 'cardio'} timer that's going now won't be saved, so end and save it first if you want to keep it.`}
         </p>
       </Modal>
     </div>
@@ -326,7 +351,8 @@ function RestScreen({ workout, unit, dispatch }: { workout: WorkoutState; unit: 
   const remaining = restRemainingMs(workout, now)
   const total = Math.max(1, endsAt - startedAt)
   const fraction = Math.min(1, remaining / total)
-  const next = currentSet(workout)!
+  const next = currentSet(workout)
+  const nextExercise = currentExercise(workout)!.exercise
   const postponable = canPostpone(workout)
   const R = 88
   const C = 2 * Math.PI * R
@@ -373,11 +399,18 @@ function RestScreen({ workout, unit, dispatch }: { workout: WorkoutState; unit: 
 
       <Card className="p-4">
         <p className="text-xs uppercase tracking-widest text-zinc-500 font-semibold">Up next</p>
-        <p className="text-lg font-bold mt-1">{next.exercise.name}</p>
-        <p className="text-sm text-zinc-400">
-          Set {next.setNumber} of {next.totalSets} · {targetLabel(next, unit)}
-        </p>
-        {next.lastTime && (
+        <p className="text-lg font-bold mt-1">{nextExercise.name}</p>
+        {next ? (
+          <p className="text-sm text-zinc-400">
+            Set {next.setNumber} of {next.totalSets} · {targetLabel(next, unit)}
+          </p>
+        ) : (
+          <p className="text-sm text-zinc-400">
+            Cardio
+            {nextExercise.cardio?.targetDurationS != null && ` · Goal ${formatGoal(nextExercise.cardio.targetDurationS)}`}
+          </p>
+        )}
+        {next?.lastTime && (
           <p className="text-sm text-zinc-500">
             Last time: {next.lastTime.reps} × {formatWeight(unit, next.lastTime.weightKg)}
           </p>
@@ -414,9 +447,13 @@ function Queue({ workout, unit, dispatch }: { workout: WorkoutState; unit: Weigh
                 <li key={i} className="flex items-center justify-between gap-3 rounded-xl bg-zinc-900/60 px-3 py-2">
                   <span className="text-sm truncate">{e.name}</span>
                   <span className="text-xs text-zinc-500 shrink-0">
-                    {e.logged.length > 0
-                      ? `${e.logged.length}/${e.sets.length} sets`
-                      : `${e.sets.length} ${e.sets.length === 1 ? 'set' : 'sets'}`}
+                    {e.cardio
+                      ? e.cardio.targetDurationS != null
+                        ? `Cardio · ${formatGoal(e.cardio.targetDurationS)}`
+                        : 'Cardio'
+                      : e.logged.length > 0
+                        ? `${e.logged.length}/${e.sets.length} sets`
+                        : `${e.sets.length} ${e.sets.length === 1 ? 'set' : 'sets'}`}
                   </span>
                 </li>
               )
@@ -445,6 +482,11 @@ function Queue({ workout, unit, dispatch }: { workout: WorkoutState; unit: Weigh
                 {e.logged.length > 0 && (
                   <p className="text-xs text-zinc-500 mt-0.5 tabular-nums">
                     {e.logged.map((s) => `${s.reps}×${formatWeight(unit, s.weightKg)}`).join(' · ')}
+                  </p>
+                )}
+                {e.cardio && e.cardioLog && (
+                  <p className="text-xs text-zinc-500 mt-0.5 tabular-nums">
+                    {cardioSummary({ activity: e.cardio.activity, ...e.cardioLog }, distanceUnitFor(unit))}
                   </p>
                 )}
               </li>
@@ -494,11 +536,16 @@ function SummaryScreen({
       <Card className="p-5">
         <p className="text-xs uppercase tracking-widest text-accent font-semibold">Workout complete</p>
         <h2 className="text-2xl font-black mt-1">Nice work 💪</h2>
-        <dl className="grid grid-cols-3 gap-3 mt-5 text-center">
+        <dl className={`grid gap-3 mt-5 text-center ${totals.setsLogged > 0 && totals.cardioLogged > 0 ? 'grid-cols-2 sm:grid-cols-4' : totals.setsLogged > 0 || totals.cardioLogged === 0 ? 'grid-cols-3' : 'grid-cols-2'}`}>
           {[
             ['Duration', formatDuration(durationS)],
-            ['Sets', String(totals.setsLogged)],
-            ['Volume', formatWeight(unit, totals.volumeKg)],
+            ...(totals.setsLogged > 0 || totals.cardioLogged === 0
+              ? [
+                  ['Sets', String(totals.setsLogged)],
+                  ['Volume', formatWeight(unit, totals.volumeKg)],
+                ]
+              : []),
+            ...(totals.cardioLogged > 0 ? [['Cardio', formatDuration(totals.cardioSeconds)]] : []),
           ].map(([k, v]) => (
             <div key={k} className="rounded-xl bg-zinc-950 py-3">
               <dt className="text-xs text-zinc-500">{k}</dt>
@@ -522,7 +569,9 @@ function SummaryScreen({
                 )}
               </p>
               <p className="text-sm text-zinc-400 tabular-nums">
-                {e.logged.map((s) => `${s.reps}×${formatWeight(unit, s.weightKg)}`).join(' · ')}
+                {e.cardio && e.cardioLog
+                  ? cardioSummary({ activity: e.cardio.activity, ...e.cardioLog }, distanceUnitFor(unit))
+                  : e.logged.map((s) => `${s.reps}×${formatWeight(unit, s.weightKg)}`).join(' · ')}
               </p>
             </div>
           ))}
@@ -533,7 +582,7 @@ function SummaryScreen({
 
       <ErrorText error={save.error && `Couldn't save: ${save.error.message}. Your workout is kept on this device — try again when you're online.`} />
 
-      <Button variant="primary" size="xl" className="w-full" disabled={totals.setsLogged === 0} loading={save.isPending} onClick={() => save.mutate()}>
+      <Button variant="primary" size="xl" className="w-full" disabled={totals.setsLogged + totals.cardioLogged === 0} loading={save.isPending} onClick={() => save.mutate()}>
         Save workout
       </Button>
       <div className="flex gap-2">

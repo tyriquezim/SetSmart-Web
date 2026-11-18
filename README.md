@@ -54,6 +54,11 @@ The site is at <https://setsmart.netlify.app> and deploys from `main`. Build set
 
 - `queue[0]` is the current exercise. **Postpone** swaps it with the next one (repeatable), or sends it to the end.
 - The rest timer stores an absolute `endsAt` timestamp, so it stays correct across tab switches and reloads.
+- **Cardio** exercises (runs, treadmill, rowing machine and so on) sit in routines next to weights exercises, with
+  an optional goal duration instead of sets. In a workout they're timed: Start, Pause/Resume and End, with an alert
+  when the goal is reached. The timer also uses absolute times (`accumulatedMs` + `runningSince`). After ending it,
+  the time is filled in from the timer and the user can add a distance *or* a pace (a speed for cycling); the other is
+  worked out. Cardio can only be logged by timing it.
 - The in-progress workout is saved to `localStorage` after every action and uploaded once via the
   `log_workout` RPC when you save. The RPC is idempotent, so a failed save on bad gym Wi-Fi can be retried safely.
 
@@ -79,12 +84,14 @@ estimate. The in-app "How it's worked out" sheet explains it to users with their
   Otherwise Mifflin-St Jeor (1990) from weight, height and age. If sex isn't set, the average of the two constants is used.
 - **Everyday activity:** resting × (PAL − 1), with PAL 1.4 / 1.55 / 1.75 from the FAO/WHO/UNU (2004) ranges.
   It's assumed to be 1.4 until the user picks a level.
-- **Workouts:** `(MET × 3.5 × kg ÷ 200 − resting per minute) × minutes`, with 3.5 METs (moderate) or 6.0 METs
-  (vigorous) from the 2024 Adult Compendium. Only the energy above resting is counted, and sessions are capped at 3 hours.
-- **Cardio:** the same formula with no cap. The MET value comes from the 2024 Compendium, listed with its code in
+- **Weight training:** `(MET × 3.5 × kg ÷ 200 − resting per minute) × minutes`, with 3.5 METs (moderate) or 6.0 METs
+  (vigorous) from the 2024 Adult Compendium. The minutes are the workout's length minus its timed cardio (none for a
+  cardio-only workout). Only the energy above resting is counted, and weight training is capped at 3 hours.
+- **Cardio:** the same formula for each cardio exercise's timed duration, with no cap. The MET value comes from the 2024 Compendium, listed with its code in
   `packages/core/src/energy/cardio.ts`. For runs, walks and outdoor rides with a distance, the average speed picks the
   row with the nearest speed (flat ground). Otherwise the chosen effort picks a row, and the middle option is used if
-  none was chosen. For "Other", the user enters a MET value. Distances are in km for kg users and miles for lb users,
+  none was chosen. Each cardio exercise "counts as" one of these activities; a custom one can instead have its own
+  MET value. Distances are in km for kg users and miles for lb users,
   and in metres for swims and rows.
 - Displayed estimates are rounded to 10 kcal or 50 kJ so they don't look more precise than they are.
 
@@ -92,6 +99,10 @@ estimate. The in-app "How it's worked out" sheet explains it to users with their
 
 All weights are stored in kilograms (displayed in kg or lb per user setting); energy will be stored in kJ.
 Every table has row-level security: users only ever see their own rows (plus the built-in exercise library).
+
+Exercises have a `kind` (`weights` or `cardio`); cardio ones also have a `cardio_activity` and, for "other", a
+`cardio_met`. Logged cardio is stored in `workout_cardio`, one row per cardio exercise in a workout, sharing
+`exercise_position` numbering with `workout_sets`.
 
 **Deleting an account:** Settings → Delete account asks for the user's password, then calls the
 `delete_my_account()` RPC. It's a `security definer` function that only acts on `auth.uid()`. It deletes every row

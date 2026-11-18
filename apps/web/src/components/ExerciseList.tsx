@@ -1,8 +1,17 @@
-import { MUSCLE_GROUPS, type Exercise } from '@setsmart/core'
+import { MUSCLE_GROUPS, type Exercise, type ExerciseKind } from '@setsmart/core'
 import { useMemo, useState, type ReactNode } from 'react'
+import { exerciseSubtitle } from '../lib/exercises'
 import { Input } from './ui'
 
-/** Searchable, filterable exercise list. `renderAction` adds a control to each row. */
+const KINDS: Array<{ value: ExerciseKind; label: string }> = [
+  { value: 'weights', label: 'Weights' },
+  { value: 'cardio', label: 'Cardio' },
+]
+
+/**
+ * Searchable exercise list, with weights and cardio on separate tabs so cardio is easy
+ * to find. `renderAction` adds a control to each row.
+ */
 export function ExerciseList({
   exercises,
   renderAction,
@@ -14,37 +23,70 @@ export function ExerciseList({
   renderAction?: (e: Exercise) => ReactNode
   onSelect?: (e: Exercise) => void
   isSelected?: (e: Exercise) => boolean
-  footer?: (query: string) => ReactNode
+  /** Shown under the list, e.g. a "create" button for the current tab */
+  footer?: (query: string, kind: ExerciseKind) => ReactNode
 }) {
   const [query, setQuery] = useState('')
+  const [kind, setKind] = useState<ExerciseKind>('weights')
   const [group, setGroup] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return exercises.filter(
       (e) =>
-        (!group || e.muscleGroup === group) &&
+        e.kind === kind &&
+        (kind === 'cardio' || !group || e.muscleGroup === group) &&
         (!q || e.name.toLowerCase().includes(q) || e.equipment.toLowerCase().includes(q)),
     )
-  }, [exercises, query, group])
+  }, [exercises, query, kind, group])
+  const selectedElsewhere = isSelected ? exercises.filter((e) => e.kind !== kind && isSelected(e)).length : 0
 
   return (
     <div className="space-y-3">
-      <Input type="search" placeholder="Search exercises" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search exercises" />
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:none]">
-        {[null, ...MUSCLE_GROUPS].map((g) => (
+      <div role="tablist" aria-label="Exercise type" className="grid grid-cols-2 rounded-xl bg-zinc-950 border border-zinc-800 p-1">
+        {KINDS.map((k) => (
           <button
-            key={g ?? 'all'}
+            key={k.value}
             type="button"
-            onClick={() => setGroup(g)}
-            className={`shrink-0 h-8 px-3 rounded-full text-xs font-medium border transition-colors ${
-              group === g ? 'bg-accent text-zinc-950 border-accent' : 'border-zinc-800 text-zinc-400 hover:text-zinc-100'
+            role="tab"
+            aria-selected={kind === k.value}
+            onClick={() => setKind(k.value)}
+            className={`h-9 rounded-lg text-sm font-medium transition-colors ${
+              kind === k.value ? 'bg-zinc-800 text-accent' : 'text-zinc-400 hover:text-zinc-100'
             }`}
           >
-            {g ?? 'All'}
+            {k.label}
           </button>
         ))}
       </div>
+      <Input
+        type="search"
+        placeholder={kind === 'cardio' ? 'Search cardio' : 'Search exercises'}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        aria-label={kind === 'cardio' ? 'Search cardio' : 'Search exercises'}
+      />
+      {kind === 'weights' && (
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:none]">
+          {[null, ...MUSCLE_GROUPS].map((g) => (
+            <button
+              key={g ?? 'all'}
+              type="button"
+              onClick={() => setGroup(g)}
+              className={`shrink-0 h-8 px-3 rounded-full text-xs font-medium border transition-colors ${
+                group === g ? 'bg-accent text-zinc-950 border-accent' : 'border-zinc-800 text-zinc-400 hover:text-zinc-100'
+              }`}
+            >
+              {g ?? 'All'}
+            </button>
+          ))}
+        </div>
+      )}
+      {selectedElsewhere > 0 && (
+        <p className="text-xs text-zinc-500">
+          {selectedElsewhere} {kind === 'cardio' ? 'weights' : 'cardio'} {selectedElsewhere === 1 ? 'exercise' : 'exercises'} also selected
+        </p>
+      )}
       <ul className="divide-y divide-zinc-800/80">
         {filtered.map((e) => {
           const selected = isSelected?.(e) ?? false
@@ -55,9 +97,7 @@ export function ExerciseList({
                   {e.name}
                   {e.ownerId && <span className="ml-2 text-[10px] uppercase tracking-wider text-accent">Custom</span>}
                 </p>
-                <p className="text-xs text-zinc-500">
-                  {e.muscleGroup} · {e.equipment}
-                </p>
+                <p className="text-xs text-zinc-500">{exerciseSubtitle(e)}</p>
               </div>
               {selected && <span className="text-accent text-lg" aria-label="Selected">✓</span>}
             </>
@@ -82,7 +122,7 @@ export function ExerciseList({
         })}
       </ul>
       {filtered.length === 0 && <p className="text-sm text-zinc-500 text-center py-6">No exercises match.</p>}
-      {footer?.(query)}
+      {footer?.(query, kind)}
     </div>
   )
 }
