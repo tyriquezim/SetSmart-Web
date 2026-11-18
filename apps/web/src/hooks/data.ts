@@ -34,6 +34,12 @@ import {
   listRoutines,
   listWorkoutSessions,
   listWorkoutTimes,
+  deleteCardioSession,
+  getCardioSession,
+  listCardioSessions,
+  listCardioSessionsBetween,
+  saveCardioSession,
+  type CardioInput,
   addDays,
   saveRoutine,
   updateExercise,
@@ -55,6 +61,9 @@ export const keys = {
   sessions: ['sessions'] as const,
   session: (id: string) => ['sessions', id] as const,
   bodyWeights: ['bodyWeights'] as const,
+  /** Prefix for every cardio query. */
+  cardio: ['cardio'] as const,
+  cardioSession: (id: string) => ['cardio', 'one', id] as const,
   /** Everything derived from logged sets; invalidate when workouts change. */
   stats: ['stats'] as const,
   /** Prefix for every food-log query (single days and ranges). */
@@ -186,6 +195,55 @@ export function useDeleteWorkoutSession() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: keys.sessions })
       void qc.invalidateQueries({ queryKey: keys.stats })
+    },
+  })
+}
+
+// ---- Cardio -------------------------------------------------------------------
+
+export function useCardioSessions(limit = 20) {
+  return useQuery({ queryKey: [...keys.cardio, 'list', { limit }], queryFn: () => listCardioSessions(db, { limit }) })
+}
+
+/** Cardio sessions on local days `from`..`to` inclusive (YYYY-MM-DD), for energy estimates. */
+export function useCardioBetween(from: string, to: string = from) {
+  return useQuery({
+    queryKey: [...keys.cardio, 'between', from, to],
+    queryFn: () =>
+      listCardioSessionsBetween(
+        db,
+        new Date(`${from}T00:00:00`).toISOString(),
+        new Date(`${addDays(to, 1)}T00:00:00`).toISOString(),
+      ),
+  })
+}
+
+export function useCardioSession(id: string | undefined) {
+  return useQuery({
+    queryKey: keys.cardioSession(id ?? ''),
+    queryFn: () => getCardioSession(db, id!),
+    enabled: Boolean(id),
+  })
+}
+
+export function useSaveCardio() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CardioInput) => saveCardioSession(db, input),
+    onSuccess: (saved) => {
+      qc.setQueryData(keys.cardioSession(saved.id), saved)
+      void qc.invalidateQueries({ queryKey: keys.cardio })
+    },
+  })
+}
+
+export function useDeleteCardio() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => deleteCardioSession(db, id),
+    onSuccess: (_, id) => {
+      qc.removeQueries({ queryKey: keys.cardioSession(id) })
+      void qc.invalidateQueries({ queryKey: keys.cardio })
     },
   })
 }

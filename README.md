@@ -81,6 +81,11 @@ estimate. The in-app "How it's worked out" sheet explains it to users with their
   It's assumed to be 1.4 until the user picks a level.
 - **Workouts:** `(MET × 3.5 × kg ÷ 200 − resting per minute) × minutes`, with 3.5 METs (moderate) or 6.0 METs
   (vigorous) from the 2024 Adult Compendium. Only the energy above resting is counted, and sessions are capped at 3 hours.
+- **Cardio:** the same formula with no cap. The MET value comes from the 2024 Compendium, listed with its code in
+  `packages/core/src/energy/cardio.ts`. For runs, walks and outdoor rides with a distance, the average speed picks the
+  row with the nearest speed (flat ground). Otherwise the chosen effort picks a row, and the middle option is used if
+  none was chosen. For "Other", the user enters a MET value. Distances are in km for kg users and miles for lb users,
+  and in metres for swims and rows.
 - Displayed estimates are rounded to 10 kcal or 50 kJ so they don't look more precise than they are.
 
 ## Data model
