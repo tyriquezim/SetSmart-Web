@@ -122,6 +122,41 @@ export interface WorkoutSessionDetail extends WorkoutSessionSummary {
   sets: LoggedWorkoutSet[]
 }
 
+// ---- Cardio ------------------------------------------------------------------
+
+export type CardioActivity =
+  | 'run'
+  | 'walk'
+  | 'hike'
+  | 'cycle'
+  | 'indoor_cycle'
+  | 'row'
+  | 'elliptical'
+  | 'stairs'
+  | 'swim'
+  | 'hiit'
+  | 'other'
+
+/** How hard a cardio session felt; picks a Compendium row when speed can't be used. */
+export type CardioEffort = 'light' | 'moderate' | 'vigorous'
+
+export interface CardioSession {
+  id: string
+  activity: CardioActivity
+  /** Only for 'other', e.g. "Kayaking" */
+  customName: string | null
+  startedAt: string
+  durationS: number
+  /** Metres; optional */
+  distanceM: number | null
+  effort: CardioEffort | null
+  /** Only for 'other': a MET value the user looked up */
+  met: number | null
+  notes: string | null
+}
+
+export type CardioInput = Omit<CardioSession, 'id'> & { id: string | null }
+
 export interface BodyWeightEntry {
   id: string
   /** Local calendar date, YYYY-MM-DD */
