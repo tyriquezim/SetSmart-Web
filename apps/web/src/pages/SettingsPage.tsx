@@ -1,6 +1,7 @@
 import type { EnergyUnit, WeightUnit } from '@setsmart/core'
 import { useState } from 'react'
 import { useUser } from '../auth/context'
+import { DeleteAccountCard } from '../components/DeleteAccountCard'
 import { BodyDetailsCard } from '../components/energy/BodyDetailsCard'
 import { Button, Card, ErrorText, Field, Input, LoadingBlock, PageHeader, Segmented } from '../components/ui'
 import { useProfile, useUpdateProfile } from '../hooks/data'
@@ -147,6 +148,8 @@ export function SettingsPage() {
             Sign out
           </Button>
         </Card>
+
+        <DeleteAccountCard />
       </div>
     </>
   )

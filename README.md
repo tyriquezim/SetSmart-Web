@@ -92,3 +92,8 @@ estimate. The in-app "How it's worked out" sheet explains it to users with their
 
 All weights are stored in kilograms (displayed in kg or lb per user setting); energy will be stored in kJ.
 Every table has row-level security: users only ever see their own rows (plus the built-in exercise library).
+
+**Deleting an account:** Settings → Delete account asks for the user's password, then calls the
+`delete_my_account()` RPC. It's a `security definer` function that only acts on `auth.uid()`. It deletes every row
+the user owns, child tables first (custom exercises are referenced with `on delete restrict`), and then their
+`auth.users` row, all in one transaction. The app then signs out locally.

@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Navigate, useLocation } from 'react-router'
 import { useAuth } from '../auth/context'
 import { Button, ErrorText, Field, FullScreenSpinner, Input } from '../components/ui'
+import { clearAccountDeletedFlag, readAccountDeletedFlag } from '../lib/accountDeleted'
 import { supabase } from '../lib/supabase'
 
 type Mode = 'signin' | 'signup' | 'reset'
@@ -15,7 +16,11 @@ export function AuthPage() {
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(() =>
+    readAccountDeletedFlag() ? 'Your account and all its data have been deleted.' : null,
+  )
+  // Show the confirmation once; a later visit to this page shouldn't repeat it.
+  useEffect(clearAccountDeletedFlag, [])
 
   if (loading) return <FullScreenSpinner />
   if (user) {
