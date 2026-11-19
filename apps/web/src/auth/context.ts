@@ -5,9 +5,18 @@ export interface AuthState {
   session: Session | null
   user: User | null
   loading: boolean
+  /** Signed in from a password reset link and hasn't set a new password yet. */
+  recovering: boolean
+  endRecovery: () => void
 }
 
-export const AuthContext = createContext<AuthState>({ session: null, user: null, loading: true })
+export const AuthContext = createContext<AuthState>({
+  session: null,
+  user: null,
+  loading: true,
+  recovering: false,
+  endRecovery: () => {},
+})
 
 export function useAuth(): AuthState {
   return useContext(AuthContext)

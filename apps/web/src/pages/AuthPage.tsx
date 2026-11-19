@@ -3,7 +3,7 @@ import { Navigate, useLocation } from 'react-router'
 import { useAuth } from '../auth/context'
 import { Button, ErrorText, Field, FullScreenSpinner, Input } from '../components/ui'
 import { clearAccountDeletedFlag, readAccountDeletedFlag } from '../lib/accountDeleted'
-import { supabase } from '../lib/supabase'
+import { emailLinkError, supabase } from '../lib/supabase'
 
 type Mode = 'signin' | 'signup' | 'reset'
 
@@ -15,7 +15,7 @@ export function AuthPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(emailLinkError)
   const [notice, setNotice] = useState<string | null>(() =>
     readAccountDeletedFlag() ? 'Your account and all its data have been deleted.' : null,
   )
@@ -51,7 +51,7 @@ export function AuthPage() {
         }
       } else {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/settings`,
+          redirectTo: `${window.location.origin}/reset-password`,
         })
         if (error) throw error
         setNotice('If an account exists for that email, a reset link is on its way.')

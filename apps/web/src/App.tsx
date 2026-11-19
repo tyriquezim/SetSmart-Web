@@ -1,4 +1,5 @@
-import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router'
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router'
+import { useAuth } from './auth/context'
 import { RequireAuth } from './auth/RequireAuth'
 import { Layout } from './components/Layout'
 import { isSupabaseConfigured } from './lib/supabase'
@@ -12,6 +13,7 @@ import { HomePage } from './pages/HomePage'
 import { ProgressPage } from './pages/ProgressPage'
 import { RoutineDetailPage } from './pages/RoutineDetailPage'
 import { RoutineEditorPage } from './pages/RoutineEditorPage'
+import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { RoutinesPage } from './pages/RoutinesPage'
 import { SessionPage } from './pages/SessionPage'
 import { SettingsPage } from './pages/SettingsPage'
@@ -27,12 +29,22 @@ function AuthedShell() {
   )
 }
 
+/** Someone who opened a password reset link must choose a new password before anything else. */
+function RecoveryRedirect() {
+  const { recovering, user } = useAuth()
+  const { pathname } = useLocation()
+  if (recovering && user && pathname !== '/reset-password') return <Navigate to="/reset-password" replace />
+  return null
+}
+
 export function App() {
   if (!isSupabaseConfigured) return <SetupPage />
   return (
     <BrowserRouter>
+      <RecoveryRedirect />
       <Routes>
         <Route path="/login" element={<AuthPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route element={<RequireAuth />}>
           <Route element={<AuthedShell />}>
             <Route element={<Layout />}>
