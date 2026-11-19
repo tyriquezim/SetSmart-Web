@@ -70,7 +70,7 @@ export function AuthPage() {
     <div className="min-h-dvh grid place-items-center px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="flex items-center gap-3 mb-8 justify-center">
-          <img src="/favicon.svg" alt="" className="size-11" />
+          <img src="/logo.png" alt="" className="size-11 rounded-xl" />
           <span className="text-3xl font-black tracking-tight">SetSmart</span>
         </div>
         <form onSubmit={onSubmit} className="rounded-3xl bg-zinc-900 border border-zinc-800 p-6 space-y-4">

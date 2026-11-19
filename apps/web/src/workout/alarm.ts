@@ -63,7 +63,7 @@ export function restOverAlert(nextUp: string): void {
   // A system notification helps when the tab is in the background.
   if (document.visibilityState === 'hidden' && 'Notification' in window && Notification.permission === 'granted') {
     try {
-      new Notification('Rest over — time to lift!', { body: nextUp, tag: 'setsmart-rest', requireInteraction: false })
+      new Notification('Rest over — time to lift!', { body: nextUp, icon: '/icon-192.png', tag: 'setsmart-rest', requireInteraction: false })
     } catch {
       // Some mobile browsers only allow notifications via a service worker.
     }
@@ -77,7 +77,7 @@ export function cardioGoalAlert(label: string): void {
   if (prefs.vibrate) navigator.vibrate?.([300, 150, 300, 150, 300])
   if (document.visibilityState === 'hidden' && 'Notification' in window && Notification.permission === 'granted') {
     try {
-      new Notification('Goal reached!', { body: label, tag: 'setsmart-cardio-goal', requireInteraction: false })
+      new Notification('Goal reached!', { body: label, icon: '/icon-192.png', tag: 'setsmart-cardio-goal', requireInteraction: false })
     } catch {
       // Some mobile browsers only allow notifications via a service worker.
     }
