@@ -36,7 +36,9 @@ The site is at <https://setsmart.netlify.app> and deploys from `main`. Build set
    and `VITE_USDA_API_KEY`. They are baked in at build time, so **redeploy** after changing them.
    Only ever use the anon/publishable key here, never the service-role key.
 2. In Supabase → *Authentication → URL Configuration*, set the Site URL to `https://setsmart.netlify.app`
-   and add both it and `http://localhost:5173` under Redirect URLs.
+   and add `https://setsmart.netlify.app/**` and `http://localhost:5173/**` under Redirect URLs. Password reset
+   emails link to `/reset-password`; if that URL isn't allowed, Supabase sends people to the Site URL instead,
+   and the app still takes them to the reset screen.
 
 ## Scripts (from repo root)
 
